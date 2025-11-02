@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
@@ -39,6 +40,11 @@ function crearReceta() {
     $stmt->bind_param("iiid", $id_plato, $id_ingrediente, $id_unidad, $cantidad);
 
     if ($stmt->execute()) {
+         registrarBitacora(
+        $conn,
+        "Recetas",
+        "insertar",
+        "Registro #$id_plato insertado (Id_ingrediente: $id_ingrediente, unidad de medida : $id_unidad,cantidad: $cantidad)");
         $_SESSION['mensaje'] = "Receta creada exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
@@ -68,6 +74,11 @@ function actualizarReceta() {
     $stmt->bind_param("iiidi", $id_plato, $id_ingrediente, $id_unidad, $cantidad, $id_registro_receta);
 
     if ($stmt->execute()) {
+        registrarBitacora(
+        $conn,
+        "Recetas",
+        "Actualizar",
+        "Registro #$id_plato Actualizado (Id_ingrediente: $id_ingrediente, unidad de medida : $id_unidad,cantidad: $cantidad)");
         $_SESSION['mensaje'] = "Receta actualizada exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
@@ -90,6 +101,11 @@ function eliminarReceta() {
     $stmt->bind_param("i", $id_registro_receta);
 
     if ($stmt->execute()) {
+              registrarBitacora(
+        $conn,
+        "Recetas",
+        "Eliminar",
+        "Registro #$id_registro_receta Eliminado");
         $_SESSION['mensaje'] = "Receta eliminada exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
