@@ -8,6 +8,99 @@ if (!isset($_SESSION['id_usuario'])) {
     exit();
 }
 
+// Función para validar y sanitizar datos del accidente
+function validarDatosAccidente($datos) {
+    $errores = [];
+    
+    // Validar viaje
+    if (empty($datos['id_viaje']) || !is_numeric($datos['id_viaje']) || $datos['id_viaje'] <= 0) {
+        $errores[] = "El viaje relacionado es inválido";
+    }
+    
+    // Validar empleado
+    if (empty($datos['id_empleado']) || !is_numeric($datos['id_empleado']) || $datos['id_empleado'] <= 0) {
+        $errores[] = "El empleado que reporta es inválido";
+    }
+    
+    // Validar descripción del accidente
+    if (empty($datos['descripcion_accidente'])) {
+        $errores[] = "La descripción del accidente es requerida";
+    } else {
+        $descripcion = trim($datos['descripcion_accidente']);
+        if (strlen($descripcion) < 50) {
+            $errores[] = "La descripción debe tener al menos 50 caracteres";
+        }
+        if (strlen($descripcion) > 2000) {
+            $errores[] = "La descripción no puede exceder los 2000 caracteres";
+        }
+        // Validar caracteres en descripción
+        if (!preg_match('/^[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ\s\-\_\.\,\;\:\!\?\(\)\#\$\&\+\=\/\@\"\'\n\r]+$/', $descripcion)) {
+            $errores[] = "La descripción contiene caracteres no permitidos";
+        }
+    }
+    
+    // Validar fecha y hora
+    if (empty($datos['fecha_hora'])) {
+        $errores[] = "La fecha y hora del accidente son requeridas";
+    } else {
+        $fecha_hora = $datos['fecha_hora'];
+        // Validar formato datetime-local (YYYY-MM-DDTHH:MM)
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $fecha_hora)) {
+            $errores[] = "El formato de fecha y hora es inválido (YYYY-MM-DDTHH:MM)";
+        } else {
+            // Convertir a formato MySQL
+            $fecha_mysql = str_replace('T', ' ', $fecha_hora) . ':00';
+            $fecha_obj = DateTime::createFromFormat('Y-m-d H:i:s', $fecha_mysql);
+            
+            if (!$fecha_obj || $fecha_obj->format('Y-m-d H:i:s') !== $fecha_mysql) {
+                $errores[] = "La fecha y hora proporcionadas son inválidas";
+            } else {
+                // Validar que la fecha no sea futura
+                $ahora = new DateTime();
+                if ($fecha_obj > $ahora) {
+                    $errores[] = "La fecha y hora del accidente no pueden ser en el futuro";
+                }
+                
+                // Validar que la fecha no sea muy antigua (máximo 1 año atrás)
+                $fecha_limite = new DateTime();
+                $fecha_limite->modify('-1 year');
+                if ($fecha_obj < $fecha_limite) {
+                    $errores[] = "La fecha del accidente no puede ser mayor a 1 año atrás";
+                }
+            }
+        }
+    }
+    
+    return $errores;
+}
+
+// Funciones de validación de existencia
+function validarViaje($id_viaje) {
+    $conn = conectar();
+    $sql = "SELECT id_viaje FROM viajes WHERE id_viaje = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_viaje);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $exists = $result->num_rows > 0;
+    $stmt->close();
+    desconectar($conn);
+    return $exists;
+}
+
+function validarEmpleado($id_empleado) {
+    $conn = conectar();
+    $sql = "SELECT id_empleado FROM empleados WHERE id_empleado = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_empleado);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $exists = $result->num_rows > 0;
+    $stmt->close();
+    desconectar($conn);
+    return $exists;
+}
+
 // Procesar operaciones CRUD
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $operacion = $_POST['operacion'] ?? '';
@@ -29,10 +122,35 @@ function crearAccidente() {
     global $conn;
     $conn = conectar();
     
-    $id_viaje = $_POST['id_viaje'] ?? '';
-    $id_empleado = $_POST['id_empleado'] ?? '';
-    $descripcion_accidente = $_POST['descripcion_accidente'] ?? '';
-    $fecha_hora = $_POST['fecha_hora'] ?? date('Y-m-d H:i:s');
+    // Validar datos
+    $errores = validarDatosAccidente($_POST);
+    
+    // Verificar existencia del viaje
+    if (empty($errores)) {
+        if (!validarViaje($_POST['id_viaje'])) {
+            $errores[] = "El viaje seleccionado no existe";
+        }
+    }
+    
+    // Verificar existencia del empleado
+    if (empty($errores)) {
+        if (!validarEmpleado($_POST['id_empleado'])) {
+            $errores[] = "El empleado seleccionado no existe";
+        }
+    }
+    
+    if (!empty($errores)) {
+        $_SESSION['mensaje'] = "Errores de validación:<br>" . implode("<br>", $errores);
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: reportes_accidentes.php');
+        exit();
+    }
+    
+    $id_viaje = intval($_POST['id_viaje']);
+    $id_empleado = intval($_POST['id_empleado']);
+    $descripcion_accidente = trim($_POST['descripcion_accidente']);
+    $fecha_hora = str_replace('T', ' ', $_POST['fecha_hora']) . ':00';
     
     $sql = "INSERT INTO reportes_accidentes (id_viaje, id_empleado, descripcion_accidente, fecha_hora) 
             VALUES (?, ?, ?, ?)";
@@ -58,11 +176,45 @@ function actualizarAccidente() {
     global $conn;
     $conn = conectar();
     
-    $id_accidente = $_POST['id_accidente'] ?? '';
-    $id_viaje = $_POST['id_viaje'] ?? '';
-    $id_empleado = $_POST['id_empleado'] ?? '';
-    $descripcion_accidente = $_POST['descripcion_accidente'] ?? '';
-    $fecha_hora = $_POST['fecha_hora'] ?? '';
+    // Validar ID de accidente
+    if (empty($_POST['id_accidente']) || !is_numeric($_POST['id_accidente']) || $_POST['id_accidente'] <= 0) {
+        $_SESSION['mensaje'] = "ID de accidente inválido";
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: reportes_accidentes.php');
+        exit();
+    }
+    
+    // Validar datos
+    $errores = validarDatosAccidente($_POST);
+    
+    // Verificar existencia del viaje
+    if (empty($errores)) {
+        if (!validarViaje($_POST['id_viaje'])) {
+            $errores[] = "El viaje seleccionado no existe";
+        }
+    }
+    
+    // Verificar existencia del empleado
+    if (empty($errores)) {
+        if (!validarEmpleado($_POST['id_empleado'])) {
+            $errores[] = "El empleado seleccionado no existe";
+        }
+    }
+    
+    if (!empty($errores)) {
+        $_SESSION['mensaje'] = "Errores de validación:<br>" . implode("<br>", $errores);
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: reportes_accidentes.php');
+        exit();
+    }
+    
+    $id_accidente = intval($_POST['id_accidente']);
+    $id_viaje = intval($_POST['id_viaje']);
+    $id_empleado = intval($_POST['id_empleado']);
+    $descripcion_accidente = trim($_POST['descripcion_accidente']);
+    $fecha_hora = str_replace('T', ' ', $_POST['fecha_hora']) . ':00';
     
     $sql = "UPDATE reportes_accidentes SET id_viaje = ?, id_empleado = ?, descripcion_accidente = ?, fecha_hora = ? 
             WHERE id_accidente = ?";
@@ -90,52 +242,112 @@ function eliminarAccidente() {
     
     $id_accidente = $_POST['id_accidente'] ?? '';
     
+    // Validar que el ID no esté vacío
+    if (empty($id_accidente) || !is_numeric($id_accidente) || $id_accidente <= 0) {
+        $_SESSION['mensaje'] = "Error: No se proporcionó un ID de accidente válido.";
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: reportes_accidentes.php');
+        exit();
+    }
+    
+    $id_accidente = intval($id_accidente);
+    
     try {
-        // Verificar si el reporte de accidente está siendo referenciado en otras tablas
-        // Por ejemplo, si hay una tabla de seguimiento o investigaciones
-        // $check_seguimiento = $conn->prepare("SELECT COUNT(*) as count FROM seguimiento_accidentes WHERE id_accidente = ?");
-        // $check_seguimiento->bind_param("i", $id_accidente);
-        // $check_seguimiento->execute();
-        // $result_seguimiento = $check_seguimiento->get_result();
-        // $row_seguimiento = $result_seguimiento->fetch_assoc();
-        // $check_seguimiento->close();
+        // Primero verificar si el accidente existe
+        $check_accidente = $conn->prepare("SELECT id_accidente FROM reportes_accidentes WHERE id_accidente = ?");
+        if (!$check_accidente) {
+            throw new Exception("Error al preparar la consulta: " . $conn->error);
+        }
         
-        // if ($row_seguimiento['count'] > 0) {
-        //     $_SESSION['mensaje'] = "No se puede eliminar el reporte de accidente porque tiene seguimientos registrados.";
-        //     $_SESSION['tipo_mensaje'] = "error";
-        //     desconectar($conn);
-        //     header('Location: reportes_accidentes.php');
-        //     exit();
-        // }
+        $check_accidente->bind_param("i", $id_accidente);
+        
+        if (!$check_accidente->execute()) {
+            throw new Exception("Error al ejecutar la consulta: " . $check_accidente->error);
+        }
+        
+        $result_accidente = $check_accidente->get_result();
+        
+        if ($result_accidente->num_rows === 0) {
+            $_SESSION['mensaje'] = "Error: El reporte de accidente que intenta eliminar no existe en el sistema.";
+            $_SESSION['tipo_mensaje'] = "error";
+            $check_accidente->close();
+            desconectar($conn);
+            header('Location: reportes_accidentes.php');
+            exit();
+        }
+        $check_accidente->close();
+        
+        // Verificar si existe la tabla seguimiento_accidentes y si tiene relación
+        $check_tabla_seguimiento = $conn->query("SHOW TABLES LIKE 'seguimiento_accidentes'");
+        if ($check_tabla_seguimiento && $check_tabla_seguimiento->num_rows > 0) {
+            // Verificar si hay registros relacionados
+            $check_relacion = $conn->prepare("SELECT COUNT(*) as count FROM seguimiento_accidentes WHERE id_accidente = ?");
+            if ($check_relacion) {
+                $check_relacion->bind_param("i", $id_accidente);
+                $check_relacion->execute();
+                $result_relacion = $check_relacion->get_result();
+                $row_relacion = $result_relacion->fetch_assoc();
+                $check_relacion->close();
+                
+                if ($row_relacion['count'] > 0) {
+                    $_SESSION['mensaje'] = "No se puede eliminar el reporte de accidente porque tiene seguimientos registrados (" . $row_relacion['count'] . " registros relacionados).";
+                    $_SESSION['tipo_mensaje'] = "error";
+                    desconectar($conn);
+                    header('Location: reportes_accidentes.php');
+                    exit();
+                }
+            }
+        }
         
         // Si no hay referencias, proceder con la eliminación
         $sql = "DELETE FROM reportes_accidentes WHERE id_accidente = ?";
         $stmt = $conn->prepare($sql);
+        
+        if (!$stmt) {
+            throw new Exception("Error al preparar la consulta de eliminación: " . $conn->error);
+        }
+        
         $stmt->bind_param("i", $id_accidente);
         
         if ($stmt->execute()) {
-            $_SESSION['mensaje'] = "Reporte de accidente eliminado exitosamente";
-            $_SESSION['tipo_mensaje'] = "success";
+            if ($stmt->affected_rows > 0) {
+                $_SESSION['mensaje'] = "Reporte de accidente eliminado exitosamente";
+                $_SESSION['tipo_mensaje'] = "success";
+            } else {
+                $_SESSION['mensaje'] = "No se pudo eliminar el reporte de accidente. Es posible que ya haya sido eliminado o no exista.";
+                $_SESSION['tipo_mensaje'] = "error";
+            }
         } else {
-            // Capturar cualquier otro error que pueda ocurrir
-            $_SESSION['mensaje'] = "Error al eliminar accidente: " . $conn->error;
-            $_SESSION['tipo_mensaje'] = "error";
+            $error = $stmt->error;
+            if (strpos($error, 'foreign key constraint') !== false) {
+                $_SESSION['mensaje'] = "No se puede eliminar el reporte de accidente porque está siendo utilizado en otros registros del sistema.";
+                $_SESSION['tipo_mensaje'] = "error";
+            } else {
+                $_SESSION['mensaje'] = "Error al eliminar accidente: " . $error;
+                $_SESSION['tipo_mensaje'] = "error";
+            }
         }
         
         $stmt->close();
         
     } catch (mysqli_sql_exception $e) {
         // Capturar excepciones específicas de MySQL
-        if (strpos($e->getMessage(), 'foreign key constraint fails') !== false) {
+        $error_message = $e->getMessage();
+        
+        if (strpos($error_message, 'foreign key constraint fails') !== false) {
             $_SESSION['mensaje'] = "No se puede eliminar el reporte de accidente porque está siendo utilizado en otros registros del sistema.";
             $_SESSION['tipo_mensaje'] = "error";
+        } else if (strpos($error_message, 'Unknown column') !== false) {
+            $_SESSION['mensaje'] = "Error en la consulta a la base de datos. Por favor, contacte al administrador del sistema.";
+            $_SESSION['tipo_mensaje'] = "error";
         } else {
-            $_SESSION['mensaje'] = "Error al eliminar accidente: " . $e->getMessage();
+            $_SESSION['mensaje'] = "Error de base de datos: " . $error_message;
             $_SESSION['tipo_mensaje'] = "error";
         }
     } catch (Exception $e) {
         // Capturar cualquier otra excepción
-        $_SESSION['mensaje'] = "Error al eliminar accidente: " . $e->getMessage();
+        $_SESSION['mensaje'] = "Error inesperado: " . $e->getMessage();
         $_SESSION['tipo_mensaje'] = "error";
     }
     
@@ -148,7 +360,6 @@ function eliminarAccidente() {
 function obtenerAccidentes() {
     $conn = conectar();
     
-    // CONSULTA CORREGIDA con nombres de columnas correctos
     $sql = "SELECT ra.*, 
                    v.descripcion_viaje,
                    v.fecha_hora_salida,
@@ -178,7 +389,6 @@ function obtenerAccidentes() {
 function obtenerViajes() {
     $conn = conectar();
     
-    // CONSULTA CORREGIDA - usando columnas correctas
     $sql = "SELECT v.id_viaje, v.descripcion_viaje, v.fecha_hora_salida, ve.no_placa, 
                    ep.nombre_empleado as nombre_piloto, ep.apellido_empleado as apellido_piloto
             FROM viajes v
@@ -203,7 +413,6 @@ function obtenerViajes() {
 function obtenerEmpleados() {
     $conn = conectar();
     
-    // CONSULTA CORREGIDA - usando columnas correctas
     $sql = "SELECT id_empleado, nombre_empleado, apellido_empleado 
             FROM empleados 
             ORDER BY nombre_empleado, apellido_empleado";
@@ -311,13 +520,16 @@ $empleados = obtenerEmpleados();
                 <div class="col-12">
                     <label class="form-label" for="descripcion_accidente">Descripción del Accidente:</label>
                     <textarea class="form-control" id="descripcion_accidente" name="descripcion_accidente" 
-                              rows="4" required placeholder="Describa detalladamente el accidente ocurrido, incluyendo lugar, hora, daños, personas involucradas, etc."></textarea>
-                    <div class="form-text">Mínimo 50 caracteres. Sea lo más descriptivo posible.</div>
+                              rows="4" maxlength="2000" required 
+                              placeholder="Describa detalladamente el accidente ocurrido, incluyendo lugar, hora, daños, personas involucradas, etc."></textarea>
+                    <div class="form-text">Mínimo 50 caracteres, máximo 2000 caracteres. Sea lo más descriptivo posible.</div>
                 </div>
                 
                 <div class="col-md-6">
                     <label class="form-label" for="fecha_hora">Fecha y Hora del Accidente:</label>
-                    <input type="datetime-local" class="form-control" id="fecha_hora" name="fecha_hora" required>
+                    <input type="datetime-local" class="form-control" id="fecha_hora" name="fecha_hora" 
+                           max="<?php echo date('Y-m-d\TH:i'); ?>" required>
+                    <div class="form-text">No puede ser una fecha futura</div>
                 </div>
             </form>
 
@@ -357,7 +569,14 @@ $empleados = obtenerEmpleados();
                                 <?php echo htmlspecialchars($accidente['nombre_empleado'] . ' ' . $accidente['apellido_empleado']); ?>
                             </td>
                             <td class="descripcion-cell" title="<?php echo htmlspecialchars($accidente['descripcion_accidente']); ?>">
-                                <?php echo htmlspecialchars($accidente['descripcion_accidente']); ?>
+                                <?php 
+                                $descripcion = $accidente['descripcion_accidente'];
+                                if (strlen($descripcion) > 100) {
+                                    echo htmlspecialchars(substr($descripcion, 0, 100)) . '...';
+                                } else {
+                                    echo htmlspecialchars($descripcion);
+                                }
+                                ?>
                             </td>
                             <td class="fecha-cell">
                                 <?php 

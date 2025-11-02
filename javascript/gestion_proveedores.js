@@ -1,33 +1,33 @@
-// TalleresVehiculos.js — gestión de formulario de talleres con SweetAlert2
+// GestionProveedores.js — gestión de formulario de proveedores con SweetAlert2
 // CON VALIDACIONES MEJORADAS Y FORMATO UNIFICADO
 
 document.addEventListener('DOMContentLoaded', function () {
     // Elementos
-    const form = document.getElementById('form-taller');
+    const form = document.getElementById('form-proveedores');
     const inputs = form ? form.querySelectorAll('input, select, textarea') : [];
     const btnNuevo = document.getElementById('btn-nuevo');
     const btnGuardar = document.getElementById('btn-guardar');
     const btnActualizar = document.getElementById('btn-actualizar');
     const btnCancelar = document.getElementById('btn-cancelar');
     const operacionInput = document.getElementById('operacion');
-    const idTallerInput = document.getElementById('id_taller');
+    const idProveedorInput = document.getElementById('id_proveedor');
 
     // Configuración de validaciones
     const configValidaciones = {
-        nombre_taller: {
+        nombre_proveedor: {
             min: 3,
             max: 100,
-            regex: /^[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ\s\-\_\.\,\&\#]+$/,
-            mensaje: "Solo letras, números, espacios y los siguientes caracteres especiales: - _ . , & #"
+            regex: /^[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ\s\-\_\.\,\&\#\(\)]+$/,
+            mensaje: "Solo letras, números, espacios y los siguientes caracteres especiales: - _ . , & # ( )"
         },
-        telefono: {
+        telefono_proveedor: {
             min: 8,
             max: 20,
             regex: /^[\d\s\-\+\(\)]+$/,
             mensaje: "Solo números, espacios, guiones, paréntesis y signo +",
             opcional: true
         },
-        correo: {
+        correo_proveedor: {
             min: 5,
             max: 100,
             regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
@@ -82,16 +82,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Validación en tiempo real
     function configurarValidacionEnTiempoReal() {
-        // Validación de nombre del taller
-        const nombreInput = document.getElementById('nombre_taller');
+        // Validación de nombre del proveedor
+        const nombreInput = document.getElementById('nombre_proveedor');
         if (nombreInput) {
             nombreInput.addEventListener('input', function() {
                 const valorOriginal = this.value;
-                const valorSanitizado = sanitizarTexto(valorOriginal, 'nombre_taller');
+                const valorSanitizado = sanitizarTexto(valorOriginal, 'nombre_proveedor');
                 
                 if (valorSanitizado === null) {
                     this.style.borderColor = '#dc3545';
-                    this.title = configValidaciones.nombre_taller.mensaje;
+                    this.title = configValidaciones.nombre_proveedor.mensaje;
                 } else {
                     this.style.borderColor = '';
                     this.title = '';
@@ -103,12 +103,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 
                 // Validar longitud
-                if (valorSanitizado && valorSanitizado.length < configValidaciones.nombre_taller.min) {
+                if (valorSanitizado && valorSanitizado.length < configValidaciones.nombre_proveedor.min) {
                     this.style.borderColor = '#ffc107';
-                    this.title = `Mínimo ${configValidaciones.nombre_taller.min} caracteres`;
-                } else if (valorSanitizado && valorSanitizado.length > configValidaciones.nombre_taller.max) {
+                    this.title = `Mínimo ${configValidaciones.nombre_proveedor.min} caracteres`;
+                } else if (valorSanitizado && valorSanitizado.length > configValidaciones.nombre_proveedor.max) {
                     this.style.borderColor = '#ffc107';
-                    this.title = `Máximo ${configValidaciones.nombre_taller.max} caracteres`;
+                    this.title = `Máximo ${configValidaciones.nombre_proveedor.max} caracteres`;
                 } else if (valorSanitizado) {
                     this.style.borderColor = '#28a745';
                     this.title = '';
@@ -120,15 +120,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Validación de teléfono
-        const telefonoInput = document.getElementById('telefono');
+        const telefonoInput = document.getElementById('telefono_proveedor');
         if (telefonoInput) {
             telefonoInput.addEventListener('input', function() {
                 const valorOriginal = this.value;
-                const valorSanitizado = sanitizarTexto(valorOriginal, 'telefono');
+                const valorSanitizado = sanitizarTexto(valorOriginal, 'telefono_proveedor');
                 
                 if (valorSanitizado === null) {
                     this.style.borderColor = '#dc3545';
-                    this.title = configValidaciones.telefono.mensaje;
+                    this.title = configValidaciones.telefono_proveedor.mensaje;
                 } else {
                     this.style.borderColor = '';
                     this.title = '';
@@ -140,12 +140,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 
                 // Validar longitud solo si hay valor
-                if (valorSanitizado && valorSanitizado.length > configValidaciones.telefono.max) {
+                if (valorSanitizado && valorSanitizado.length > configValidaciones.telefono_proveedor.max) {
                     this.style.borderColor = '#ffc107';
-                    this.title = `Máximo ${configValidaciones.telefono.max} caracteres`;
-                } else if (valorSanitizado && valorSanitizado.replace(/\D/g, '').length < configValidaciones.telefono.min) {
+                    this.title = `Máximo ${configValidaciones.telefono_proveedor.max} caracteres`;
+                } else if (valorSanitizado && valorSanitizado.replace(/\D/g, '').length < configValidaciones.telefono_proveedor.min) {
                     this.style.borderColor = '#ffc107';
-                    this.title = `Mínimo ${configValidaciones.telefono.min} dígitos`;
+                    this.title = `Mínimo ${configValidaciones.telefono_proveedor.min} dígitos`;
                 } else if (valorSanitizado) {
                     this.style.borderColor = '#28a745';
                     this.title = '';
@@ -157,15 +157,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Validación de correo
-        const correoInput = document.getElementById('correo');
+        const correoInput = document.getElementById('correo_proveedor');
         if (correoInput) {
             correoInput.addEventListener('input', function() {
                 const valorOriginal = this.value;
-                const valorSanitizado = sanitizarTexto(valorOriginal, 'correo');
+                const valorSanitizado = sanitizarTexto(valorOriginal, 'correo_proveedor');
                 
                 if (valorSanitizado === null) {
                     this.style.borderColor = '#dc3545';
-                    this.title = configValidaciones.correo.mensaje;
+                    this.title = configValidaciones.correo_proveedor.mensaje;
                 } else {
                     this.style.borderColor = '';
                     this.title = '';
@@ -177,10 +177,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 
                 // Validar longitud solo si hay valor
-                if (valorSanitizado && valorSanitizado.length > configValidaciones.correo.max) {
+                if (valorSanitizado && valorSanitizado.length > configValidaciones.correo_proveedor.max) {
                     this.style.borderColor = '#ffc107';
-                    this.title = `Máximo ${configValidaciones.correo.max} caracteres`;
-                } else if (valorSanitizado && !configValidaciones.correo.regex.test(valorSanitizado)) {
+                    this.title = `Máximo ${configValidaciones.correo_proveedor.max} caracteres`;
+                } else if (valorSanitizado && !configValidaciones.correo_proveedor.regex.test(valorSanitizado)) {
                     this.style.borderColor = '#dc3545';
                     this.title = 'Formato de correo electrónico inválido';
                 } else if (valorSanitizado) {
@@ -204,14 +204,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!form) return console.warn('Formulario no encontrado');
         if (validarFormularioCompleto()) {
             const doSubmit = () => {
-                if (operacionInput) operacionInput.value = 'crear';
+                if (operacionInput) operacionInput.value = 'crear_proveedor';
                 form.submit();
             };
             
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
-                    title: 'Registrar taller',
-                    text: '¿Deseas registrar este taller en el sistema?',
+                    title: 'Registrar proveedor',
+                    text: '¿Deseas registrar este proveedor en el sistema?',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Sí, registrar',
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (result.isConfirmed) doSubmit(); 
                 });
             } else {
-                if (confirm('¿Deseas registrar este taller en el sistema?')) doSubmit();
+                if (confirm('¿Deseas registrar este proveedor en el sistema?')) doSubmit();
             }
         }
     });
@@ -231,14 +231,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!form) return console.warn('Formulario no encontrado');
         if (validarFormularioCompleto()) {
             const doSubmit = () => {
-                if (operacionInput) operacionInput.value = 'actualizar';
+                if (operacionInput) operacionInput.value = 'actualizar_proveedor';
                 form.submit();
             };
             
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
-                    title: 'Actualizar taller',
-                    text: '¿Deseas guardar los cambios en este taller?',
+                    title: 'Actualizar proveedor',
+                    text: '¿Deseas guardar los cambios en este proveedor?',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Sí, actualizar',
@@ -284,21 +284,19 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', function () {
             const id = sanitizarInput(this.getAttribute('data-id'));
             const nombre = sanitizarInput(this.getAttribute('data-nombre'));
-            const telefono = sanitizarInput(this.getAttribute('data-telefono'));
             const correo = sanitizarInput(this.getAttribute('data-correo'));
-            const especialidad = sanitizarInput(this.getAttribute('data-especialidad'));
+            const telefono = sanitizarInput(this.getAttribute('data-telefono'));
 
             const doFill = () => {
-                if (idTallerInput) idTallerInput.value = id || '';
+                if (idProveedorInput) idProveedorInput.value = id || '';
                 
                 // Sanitizar y establecer valores
-                document.getElementById('nombre_taller').value = nombre || '';
-                document.getElementById('telefono').value = telefono || '';
-                document.getElementById('correo').value = correo || '';
-                document.getElementById('id_especialidad').value = especialidad || '';
+                document.getElementById('nombre_proveedor').value = nombre || '';
+                document.getElementById('correo_proveedor').value = correo || '';
+                document.getElementById('telefono_proveedor').value = telefono || '';
 
                 // Disparar eventos de validación para actualizar estilos
-                ['nombre_taller', 'telefono', 'correo'].forEach(campoId => {
+                ['nombre_proveedor', 'telefono_proveedor', 'correo_proveedor'].forEach(campoId => {
                     const input = document.getElementById(campoId);
                     if (input) {
                         const evento = new Event('input', { bubbles: true });
@@ -314,8 +312,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
-                    title: 'Editar taller',
-                    text: `¿Deseas editar el taller "${nombre || id}"?`,
+                    title: 'Editar proveedor',
+                    text: `¿Deseas editar el proveedor "${nombre || ''}"?`,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Sí, editar',
@@ -333,11 +331,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function limpiarFormulario() {
         if (form) form.reset();
-        if (idTallerInput) idTallerInput.value = '';
-        if (operacionInput) operacionInput.value = 'crear';
+        if (idProveedorInput) idProveedorInput.value = '';
+        if (operacionInput) operacionInput.value = 'crear_proveedor';
         
         // Limpiar estilos de validación
-        ['nombre_taller', 'telefono', 'correo'].forEach(campoId => {
+        ['nombre_proveedor', 'telefono_proveedor', 'correo_proveedor'].forEach(campoId => {
             const input = document.getElementById(campoId);
             if (input) {
                 input.style.borderColor = '';
@@ -348,7 +346,7 @@ document.addEventListener('DOMContentLoaded', function () {
         mostrarBotonesGuardar();
         
         // Enfocar el primer campo después de limpiar
-        document.getElementById('nombre_taller').focus();
+        document.getElementById('nombre_proveedor').focus();
     }
 
     function mostrarBotonesGuardar() {
@@ -377,57 +375,57 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // FUNCIÓN DE VALIDACIÓN COMPLETA DEL FORMULARIO
     function validarFormularioCompleto() {
-        const nombre = document.getElementById('nombre_taller');
+        const nombre = document.getElementById('nombre_proveedor');
         const nombreValor = nombre.value.trim();
-        const nombreSanitizado = sanitizarTexto(nombreValor, 'nombre_taller');
-        const telefono = document.getElementById('telefono');
+        const nombreSanitizado = sanitizarTexto(nombreValor, 'nombre_proveedor');
+        const telefono = document.getElementById('telefono_proveedor');
         const telefonoValor = telefono.value.trim();
-        const telefonoSanitizado = sanitizarTexto(telefonoValor, 'telefono');
-        const correo = document.getElementById('correo');
+        const telefonoSanitizado = sanitizarTexto(telefonoValor, 'telefono_proveedor');
+        const correo = document.getElementById('correo_proveedor');
         const correoValor = correo.value.trim();
-        const correoSanitizado = sanitizarTexto(correoValor, 'correo');
+        const correoSanitizado = sanitizarTexto(correoValor, 'correo_proveedor');
 
         // Validar nombre (requerido)
         if (!nombreValor) { 
-            return showWarning('El nombre del taller es requerido'); 
+            return showWarning('El nombre del proveedor es requerido'); 
         }
         
         if (nombreSanitizado === null) {
-            return showWarning(configValidaciones.nombre_taller.mensaje);
+            return showWarning(configValidaciones.nombre_proveedor.mensaje);
         }
         
-        if (nombreValor.length < configValidaciones.nombre_taller.min) {
-            return showWarning(`El nombre del taller debe tener al menos ${configValidaciones.nombre_taller.min} caracteres`);
+        if (nombreValor.length < configValidaciones.nombre_proveedor.min) {
+            return showWarning(`El nombre del proveedor debe tener al menos ${configValidaciones.nombre_proveedor.min} caracteres`);
         }
         
-        if (nombreValor.length > configValidaciones.nombre_taller.max) {
-            return showWarning(`El nombre del taller no puede exceder los ${configValidaciones.nombre_taller.max} caracteres`);
+        if (nombreValor.length > configValidaciones.nombre_proveedor.max) {
+            return showWarning(`El nombre del proveedor no puede exceder los ${configValidaciones.nombre_proveedor.max} caracteres`);
         }
 
         // Validar teléfono (opcional)
         if (telefonoValor && telefonoSanitizado === null) {
-            return showWarning(configValidaciones.telefono.mensaje);
+            return showWarning(configValidaciones.telefono_proveedor.mensaje);
         }
         
-        if (telefonoValor && telefonoValor.replace(/\D/g, '').length < configValidaciones.telefono.min) {
-            return showWarning(`El teléfono debe tener al menos ${configValidaciones.telefono.min} dígitos`);
+        if (telefonoValor && telefonoValor.replace(/\D/g, '').length < configValidaciones.telefono_proveedor.min) {
+            return showWarning(`El teléfono debe tener al menos ${configValidaciones.telefono_proveedor.min} dígitos`);
         }
         
-        if (telefonoValor.length > configValidaciones.telefono.max) {
-            return showWarning(`El teléfono no puede exceder los ${configValidaciones.telefono.max} caracteres`);
+        if (telefonoValor.length > configValidaciones.telefono_proveedor.max) {
+            return showWarning(`El teléfono no puede exceder los ${configValidaciones.telefono_proveedor.max} caracteres`);
         }
 
         // Validar correo (opcional)
         if (correoValor && correoSanitizado === null) {
-            return showWarning(configValidaciones.correo.mensaje);
+            return showWarning(configValidaciones.correo_proveedor.mensaje);
         }
         
-        if (correoValor && !configValidaciones.correo.regex.test(correoValor)) {
+        if (correoValor && !configValidaciones.correo_proveedor.regex.test(correoValor)) {
             return showWarning('Por favor ingrese un correo electrónico válido');
         }
         
-        if (correoValor.length > configValidaciones.correo.max) {
-            return showWarning(`El correo no puede exceder los ${configValidaciones.correo.max} caracteres`);
+        if (correoValor.length > configValidaciones.correo_proveedor.max) {
+            return showWarning(`El correo no puede exceder los ${configValidaciones.correo_proveedor.max} caracteres`);
         }
 
         return true;
@@ -439,16 +437,16 @@ document.addEventListener('DOMContentLoaded', function () {
             evt.preventDefault();
             const frm = this;
             
-            // Obtener información del taller desde la fila de la tabla
+            // Obtener información del proveedor desde la fila de la tabla
             const fila = this.closest('tr');
-            const idTaller = fila ? fila.querySelector('td:first-child').textContent.trim() : '';
-            const nombreTaller = fila ? fila.querySelector('td:nth-child(2)').textContent.trim() : '';
+            const idProveedor = fila ? fila.querySelector('td:first-child').textContent.trim() : '';
+            const nombreProveedor = fila ? fila.querySelector('td:nth-child(2)').textContent.trim() : '';
             
-            const nombreCompleto = `Taller "${nombreTaller}" (ID: ${idTaller})`;
+            const nombreCompleto = `Proveedor "${nombreProveedor}" (ID: ${idProveedor})`;
             
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
-                    title: '¿Eliminar taller?',
+                    title: '¿Eliminar proveedor?',
                     html: `¿Estás seguro de que deseas eliminar ${nombreCompleto} del sistema?<br><br>
                           <span class="text-danger">⚠️ Esta acción no se puede deshacer.</span>`,
                     icon: 'warning',

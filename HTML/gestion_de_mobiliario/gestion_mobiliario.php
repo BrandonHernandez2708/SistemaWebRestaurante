@@ -8,6 +8,92 @@ if (!isset($_SESSION['id_usuario'])) {
     exit();
 }
 
+// Función para validar y sanitizar datos del mobiliario
+function validarDatosMobiliario($datos) {
+    $errores = [];
+    
+    // Validar nombre del mobiliario
+    if (empty($datos['nombre_mobiliario'])) {
+        $errores[] = "El nombre del mobiliario es requerido";
+    } else {
+        $nombre = trim($datos['nombre_mobiliario']);
+        if (strlen($nombre) < 2) {
+            $errores[] = "El nombre del mobiliario debe tener al menos 2 caracteres";
+        }
+        if (strlen($nombre) > 100) {
+            $errores[] = "El nombre del mobiliario no puede exceder los 100 caracteres";
+        }
+        // Validar caracteres permitidos (letras, números, espacios y algunos caracteres especiales)
+        if (!preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\_\.\(\)]+$/', $nombre)) {
+            $errores[] = "El nombre del mobiliario contiene caracteres no permitidos";
+        }
+    }
+    
+    // Validar tipo de mobiliario
+    if (empty($datos['id_tipo_mobiliario']) || !is_numeric($datos['id_tipo_mobiliario']) || $datos['id_tipo_mobiliario'] <= 0) {
+        $errores[] = "El tipo de mobiliario es inválido";
+    }
+    
+    // Validar cantidad en stock
+    if (!isset($datos['cantidad_en_stock']) || !is_numeric($datos['cantidad_en_stock'])) {
+        $errores[] = "La cantidad en stock debe ser un número válido";
+    } else if ($datos['cantidad_en_stock'] < 0) {
+        $errores[] = "La cantidad en stock no puede ser negativa";
+    } else if ($datos['cantidad_en_stock'] > 100000) {
+        $errores[] = "La cantidad en stock no puede ser mayor a 100,000 unidades";
+    }
+    
+    // Validar descripción (opcional)
+    if (!empty($datos['descripcion'])) {
+        $descripcion = trim($datos['descripcion']);
+        if (strlen($descripcion) > 500) {
+            $errores[] = "La descripción no puede exceder los 500 caracteres";
+        }
+        // Validar caracteres en descripción
+        if (!preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\_\.\(\)\,\;\:\!\?]+$/', $descripcion)) {
+            $errores[] = "La descripción contiene caracteres no permitidos";
+        }
+    }
+    
+    return $errores;
+}
+
+// Función para verificar existencia del tipo de mobiliario
+function verificarTipoMobiliario($id_tipo_mobiliario) {
+    $conn = conectar();
+    $sql = "SELECT id_tipo_mobiliario FROM tipos_mobiliario WHERE id_tipo_mobiliario = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_tipo_mobiliario);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $existe = $result->num_rows > 0;
+    $stmt->close();
+    desconectar($conn);
+    return $existe;
+}
+
+// Función para verificar si ya existe un mobiliario con el mismo nombre (evitar duplicados)
+function verificarMobiliarioExistente($nombre_mobiliario, $id_mobiliario_excluir = null) {
+    $conn = conectar();
+    
+    if ($id_mobiliario_excluir) {
+        $sql = "SELECT id_mobiliario FROM inventario_mobiliario WHERE nombre_mobiliario = ? AND id_mobiliario != ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("si", $nombre_mobiliario, $id_mobiliario_excluir);
+    } else {
+        $sql = "SELECT id_mobiliario FROM inventario_mobiliario WHERE nombre_mobiliario = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("s", $nombre_mobiliario);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $existe = $result->num_rows > 0;
+    $stmt->close();
+    desconectar($conn);
+    return $existe;
+}
+
 // Procesar operaciones CRUD
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $operacion = $_POST['operacion'] ?? '';
@@ -29,10 +115,36 @@ function crearMobiliario() {
     global $conn;
     $conn = conectar();
     
-    $nombre_mobiliario = $_POST['nombre_mobiliario'] ?? '';
-    $id_tipo_mobiliario = $_POST['id_tipo_mobiliario'] ?? '';
-    $descripcion = $_POST['descripcion'] ?? '';
-    $cantidad_en_stock = $_POST['cantidad_en_stock'] ?? 0;
+    // Validar datos
+    $errores = validarDatosMobiliario($_POST);
+    
+    // Verificar existencia del tipo de mobiliario
+    if (empty($errores)) {
+        if (!verificarTipoMobiliario($_POST['id_tipo_mobiliario'])) {
+            $errores[] = "El tipo de mobiliario seleccionado no existe";
+        }
+    }
+    
+    // Verificar si ya existe un mobiliario con el mismo nombre
+    if (empty($errores)) {
+        $nombre_mobiliario = trim($_POST['nombre_mobiliario']);
+        if (verificarMobiliarioExistente($nombre_mobiliario)) {
+            $errores[] = "Ya existe un mobiliario con el mismo nombre";
+        }
+    }
+    
+    if (!empty($errores)) {
+        $_SESSION['mensaje'] = "Errores de validación:<br>" . implode("<br>", $errores);
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: gestion_mobiliario.php');
+        exit();
+    }
+    
+    $nombre_mobiliario = trim($_POST['nombre_mobiliario']);
+    $id_tipo_mobiliario = intval($_POST['id_tipo_mobiliario']);
+    $descripcion = !empty($_POST['descripcion']) ? trim($_POST['descripcion']) : null;
+    $cantidad_en_stock = intval($_POST['cantidad_en_stock']);
     
     $sql = "INSERT INTO inventario_mobiliario (nombre_mobiliario, id_tipo_mobiliario, descripcion, cantidad_en_stock) 
             VALUES (?, ?, ?, ?)";
@@ -58,11 +170,47 @@ function actualizarMobiliario() {
     global $conn;
     $conn = conectar();
     
-    $id_mobiliario = $_POST['id_mobiliario'] ?? '';
-    $nombre_mobiliario = $_POST['nombre_mobiliario'] ?? '';
-    $id_tipo_mobiliario = $_POST['id_tipo_mobiliario'] ?? '';
-    $descripcion = $_POST['descripcion'] ?? '';
-    $cantidad_en_stock = $_POST['cantidad_en_stock'] ?? 0;
+    // Validar ID de mobiliario
+    if (empty($_POST['id_mobiliario']) || !is_numeric($_POST['id_mobiliario']) || $_POST['id_mobiliario'] <= 0) {
+        $_SESSION['mensaje'] = "ID de mobiliario inválido";
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: gestion_mobiliario.php');
+        exit();
+    }
+    
+    // Validar datos
+    $errores = validarDatosMobiliario($_POST);
+    
+    // Verificar existencia del tipo de mobiliario
+    if (empty($errores)) {
+        if (!verificarTipoMobiliario($_POST['id_tipo_mobiliario'])) {
+            $errores[] = "El tipo de mobiliario seleccionado no existe";
+        }
+    }
+    
+    // Verificar si ya existe otro mobiliario con el mismo nombre
+    if (empty($errores)) {
+        $nombre_mobiliario = trim($_POST['nombre_mobiliario']);
+        $id_mobiliario = intval($_POST['id_mobiliario']);
+        if (verificarMobiliarioExistente($nombre_mobiliario, $id_mobiliario)) {
+            $errores[] = "Ya existe otro mobiliario con el mismo nombre";
+        }
+    }
+    
+    if (!empty($errores)) {
+        $_SESSION['mensaje'] = "Errores de validación:<br>" . implode("<br>", $errores);
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: gestion_mobiliario.php');
+        exit();
+    }
+    
+    $id_mobiliario = intval($_POST['id_mobiliario']);
+    $nombre_mobiliario = trim($_POST['nombre_mobiliario']);
+    $id_tipo_mobiliario = intval($_POST['id_tipo_mobiliario']);
+    $descripcion = !empty($_POST['descripcion']) ? trim($_POST['descripcion']) : null;
+    $cantidad_en_stock = intval($_POST['cantidad_en_stock']);
     
     $sql = "UPDATE inventario_mobiliario SET nombre_mobiliario = ?, id_tipo_mobiliario = ?, descripcion = ?, cantidad_en_stock = ? 
             WHERE id_mobiliario = ?";
@@ -91,7 +239,7 @@ function eliminarMobiliario() {
     $id_mobiliario = $_POST['id_mobiliario'] ?? '';
     
     // Validar que el ID no esté vacío
-    if (empty($id_mobiliario)) {
+    if (empty($id_mobiliario) || !is_numeric($id_mobiliario) || $id_mobiliario <= 0) {
         $_SESSION['mensaje'] = "Error: No se proporcionó un ID de mobiliario válido.";
         $_SESSION['tipo_mensaje'] = "error";
         desconectar($conn);
@@ -99,9 +247,11 @@ function eliminarMobiliario() {
         exit();
     }
     
+    $id_mobiliario = intval($id_mobiliario);
+    
     try {
         // Primero verificar si el mobiliario existe
-        $check_mobiliario = $conn->prepare("SELECT id_mobiliario FROM inventario_mobiliario WHERE id_mobiliario = ?");
+        $check_mobiliario = $conn->prepare("SELECT id_mobiliario, nombre_mobiliario FROM inventario_mobiliario WHERE id_mobiliario = ?");
         if (!$check_mobiliario) {
             throw new Exception("Error al preparar la consulta: " . $conn->error);
         }
@@ -122,42 +272,29 @@ function eliminarMobiliario() {
             header('Location: gestion_mobiliario.php');
             exit();
         }
+        
+        $mobiliario = $result_mobiliario->fetch_assoc();
+        $nombre_mobiliario = $mobiliario['nombre_mobiliario'];
         $check_mobiliario->close();
         
         // Verificar si existe la tabla detalle_compra_mobiliario y si tiene relación con inventario_mobiliario
         $check_tabla_detalle = $conn->query("SHOW TABLES LIKE 'detalle_compra_mobiliario'");
         if ($check_tabla_detalle && $check_tabla_detalle->num_rows > 0) {
-            // La tabla existe, verificar si hay columnas que referencien inventario_mobiliario
-            $check_columnas = $conn->query("SHOW COLUMNS FROM detalle_compra_mobiliario");
-            $tiene_relacion = false;
-            $columna_relacion = '';
-            
-            while ($columna = $check_columnas->fetch_assoc()) {
-                if (strpos($columna['Field'], 'mobiliario') !== false || 
-                    strpos($columna['Field'], 'id_mobiliario') !== false) {
-                    $tiene_relacion = true;
-                    $columna_relacion = $columna['Field'];
-                    break;
-                }
-            }
-            
-            if ($tiene_relacion && !empty($columna_relacion)) {
-                // Verificar si hay registros relacionados
-                $check_relacion = $conn->prepare("SELECT COUNT(*) as count FROM detalle_compra_mobiliario WHERE {$columna_relacion} = ?");
-                if ($check_relacion) {
-                    $check_relacion->bind_param("i", $id_mobiliario);
-                    $check_relacion->execute();
-                    $result_relacion = $check_relacion->get_result();
-                    $row_relacion = $result_relacion->fetch_assoc();
-                    $check_relacion->close();
-                    
-                    if ($row_relacion['count'] > 0) {
-                        $_SESSION['mensaje'] = "No se puede eliminar el mobiliario porque está siendo utilizado en detalles de compra (" . $row_relacion['count'] . " registros relacionados). Primero debe eliminar o modificar los registros relacionados en los detalles de compra.";
-                        $_SESSION['tipo_mensaje'] = "error";
-                        desconectar($conn);
-                        header('Location: gestion_mobiliario.php');
-                        exit();
-                    }
+            // Verificar si hay registros relacionados
+            $check_relacion = $conn->prepare("SELECT COUNT(*) as count FROM detalle_compra_mobiliario WHERE id_mobiliario = ?");
+            if ($check_relacion) {
+                $check_relacion->bind_param("i", $id_mobiliario);
+                $check_relacion->execute();
+                $result_relacion = $check_relacion->get_result();
+                $row_relacion = $result_relacion->fetch_assoc();
+                $check_relacion->close();
+                
+                if ($row_relacion['count'] > 0) {
+                    $_SESSION['mensaje'] = "No se puede eliminar el mobiliario \"$nombre_mobiliario\" porque está siendo utilizado en detalles de compra (" . $row_relacion['count'] . " registros relacionados). Primero debe eliminar o modificar los registros relacionados en los detalles de compra.";
+                    $_SESSION['tipo_mensaje'] = "error";
+                    desconectar($conn);
+                    header('Location: gestion_mobiliario.php');
+                    exit();
                 }
             }
         }
@@ -174,7 +311,7 @@ function eliminarMobiliario() {
         
         if ($stmt->execute()) {
             if ($stmt->affected_rows > 0) {
-                $_SESSION['mensaje'] = "Mobiliario eliminado exitosamente";
+                $_SESSION['mensaje'] = "Mobiliario \"$nombre_mobiliario\" eliminado exitosamente";
                 $_SESSION['tipo_mensaje'] = "success";
             } else {
                 $_SESSION['mensaje'] = "No se pudo eliminar el mobiliario. Es posible que ya haya sido eliminado o no exista.";
@@ -183,7 +320,7 @@ function eliminarMobiliario() {
         } else {
             $error = $stmt->error;
             if (strpos($error, 'foreign key constraint') !== false) {
-                $_SESSION['mensaje'] = "No se puede eliminar el mobiliario porque está siendo utilizado en otros registros del sistema. Verifique que no existan registros relacionados en los detalles de compra.";
+                $_SESSION['mensaje'] = "No se puede eliminar el mobiliario \"$nombre_mobiliario\" porque está siendo utilizado en otros registros del sistema. Verifique que no existan registros relacionados en los detalles de compra.";
                 $_SESSION['tipo_mensaje'] = "error";
             } else {
                 $_SESSION['mensaje'] = "Error al eliminar mobiliario: " . $error;
@@ -198,7 +335,7 @@ function eliminarMobiliario() {
         $error_message = $e->getMessage();
         
         if (strpos($error_message, 'foreign key constraint fails') !== false) {
-            $_SESSION['mensaje'] = "No se puede eliminar el mobiliario porque está siendo utilizado en otros registros del sistema. Verifique que no existan registros relacionados en los detalles de compra.";
+            $_SESSION['mensaje'] = "No se puede eliminar el mobiliario \"$nombre_mobiliario\" porque está siendo utilizado en otros registros del sistema. Verifique que no existan registros relacionados en los detalles de compra.";
             $_SESSION['tipo_mensaje'] = "error";
         } else if (strpos($error_message, 'Unknown column') !== false) {
             $_SESSION['mensaje'] = "Error en la consulta a la base de datos. Por favor, contacte al administrador del sistema.";
@@ -310,7 +447,9 @@ $mobiliarios = obtenerMobiliarios();
                 
                 <div class="col-md-4">
                     <label class="form-label" for="nombre_mobiliario">Nombre del Mobiliario:</label>
-                    <input type="text" class="form-control" id="nombre_mobiliario" name="nombre_mobiliario" required placeholder="Ej. Silla ejecutiva">
+                    <input type="text" class="form-control" id="nombre_mobiliario" name="nombre_mobiliario" 
+                           maxlength="100" required placeholder="Ej. Silla ejecutiva">
+                    <div class="form-text">Mínimo 2 caracteres, máximo 100 caracteres</div>
                 </div>
                 
                 <div class="col-md-4">
@@ -327,12 +466,16 @@ $mobiliarios = obtenerMobiliarios();
                 
                 <div class="col-md-4">
                     <label class="form-label" for="cantidad_en_stock">Cantidad en Stock:</label>
-                    <input type="number" class="form-control" id="cantidad_en_stock" name="cantidad_en_stock" min="0" required value="0">
+                    <input type="number" class="form-control" id="cantidad_en_stock" name="cantidad_en_stock" 
+                           min="0" max="100000" required value="0">
+                    <div class="form-text">Máximo 100,000 unidades</div>
                 </div>
                 
                 <div class="col-12">
                     <label class="form-label" for="descripcion">Descripción:</label>
-                    <textarea class="form-control" id="descripcion" name="descripcion" rows="3" placeholder="Descripción detallada del mobiliario..."></textarea>
+                    <textarea class="form-control" id="descripcion" name="descripcion" rows="3" 
+                              maxlength="500" placeholder="Descripción detallada del mobiliario..."></textarea>
+                    <div class="form-text">Máximo 500 caracteres</div>
                 </div>
             </form>
 
@@ -363,9 +506,16 @@ $mobiliarios = obtenerMobiliarios();
                             <td><?php echo htmlspecialchars($mobiliario['nombre_mobiliario']); ?></td>
                             <td><?php echo htmlspecialchars($mobiliario['tipo_mobiliario'] ?? 'N/A'); ?></td>
                             <td class="descripcion-cell" title="<?php echo htmlspecialchars($mobiliario['descripcion'] ?? ''); ?>">
-                                <?php echo htmlspecialchars($mobiliario['descripcion'] ?? 'Sin descripción'); ?>
+                                <?php 
+                                $descripcion = $mobiliario['descripcion'] ?? 'Sin descripción';
+                                if (strlen($descripcion) > 50) {
+                                    echo htmlspecialchars(substr($descripcion, 0, 50)) . '...';
+                                } else {
+                                    echo htmlspecialchars($descripcion);
+                                }
+                                ?>
                             </td>
-                            <td><?php echo htmlspecialchars($mobiliario['cantidad_en_stock']); ?></td>
+                            <td class="text-center"><?php echo htmlspecialchars($mobiliario['cantidad_en_stock']); ?></td>
                             <td>
                                 <button class="btn btn-sm btn-primary btn-action editar-btn" 
                                         data-id="<?php echo $mobiliario['id_mobiliario']; ?>"

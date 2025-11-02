@@ -8,6 +8,118 @@ if (!isset($_SESSION['id_usuario'])) {
     exit();
 }
 
+// Función para validar y sanitizar datos del mantenimiento
+function validarDatosMantenimiento($datos) {
+    $errores = [];
+    
+    // Validar vehículo
+    if (empty($datos['id_vehiculo']) || !is_numeric($datos['id_vehiculo']) || $datos['id_vehiculo'] <= 0) {
+        $errores[] = "El vehículo seleccionado es inválido";
+    }
+    
+    // Validar taller
+    if (empty($datos['id_taller']) || !is_numeric($datos['id_taller']) || $datos['id_taller'] <= 0) {
+        $errores[] = "El taller seleccionado es inválido";
+    }
+    
+    // Validar fecha de mantenimiento
+    if (empty($datos['fecha_mantenimiento'])) {
+        $errores[] = "La fecha de mantenimiento es requerida";
+    } else {
+        $fecha = DateTime::createFromFormat('Y-m-d', $datos['fecha_mantenimiento']);
+        if (!$fecha || $fecha->format('Y-m-d') !== $datos['fecha_mantenimiento']) {
+            $errores[] = "El formato de fecha es inválido (YYYY-MM-DD)";
+        } else {
+            // Validar que la fecha no sea futura
+            $hoy = new DateTime();
+            if ($fecha > $hoy) {
+                $errores[] = "La fecha de mantenimiento no puede ser futura";
+            }
+            
+            // Validar que la fecha no sea muy antigua (máximo 10 años atrás)
+            $fecha_limite = new DateTime();
+            $fecha_limite->modify('-10 years');
+            if ($fecha < $fecha_limite) {
+                $errores[] = "La fecha de mantenimiento no puede ser mayor a 10 años atrás";
+            }
+        }
+    }
+    
+    // Validar costo
+    if (!isset($datos['costo_mantenimiento']) || !is_numeric($datos['costo_mantenimiento'])) {
+        $errores[] = "El costo debe ser un número válido";
+    } else if ($datos['costo_mantenimiento'] < 0) {
+        $errores[] = "El costo no puede ser negativo";
+    } else if ($datos['costo_mantenimiento'] == 0) {
+        $errores[] = "El costo debe ser mayor a cero";
+    } else if ($datos['costo_mantenimiento'] > 1000000) {
+        $errores[] = "El costo no puede ser mayor a Q 1,000,000.00";
+    }
+    
+    // Validar formato del costo (máximo 2 decimales)
+    if (isset($datos['costo_mantenimiento']) && is_numeric($datos['costo_mantenimiento'])) {
+        $partes = explode('.', (string)$datos['costo_mantenimiento']);
+        if (count($partes) > 1 && strlen($partes[1]) > 2) {
+            $errores[] = "El costo no puede tener más de 2 decimales";
+        }
+    }
+    
+    // Validar descripción
+    if (empty($datos['descripcion_mantenimiento'])) {
+        $errores[] = "La descripción del mantenimiento es requerida";
+    } else {
+        $descripcion = trim($datos['descripcion_mantenimiento']);
+        if (strlen($descripcion) < 5) {
+            $errores[] = "La descripción debe tener al menos 5 caracteres";
+        }
+        if (strlen($descripcion) > 500) {
+            $errores[] = "La descripción no puede exceder los 500 caracteres";
+        }
+        // Validar caracteres en descripción
+        if (!preg_match('/^[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ\s\-\_\.\,\;\:\!\?\(\)\#\$\&\+\=\/\@]+$/', $descripcion)) {
+            $errores[] = "La descripción contiene caracteres no permitidos";
+        }
+    }
+    
+    return $errores;
+}
+
+// Funciones de validación de existencia
+function validarVehiculo($id_vehiculo) {
+    $conn = conectar();
+    $sql = "SELECT id_vehiculo, estado FROM vehiculos WHERE id_vehiculo = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_vehiculo);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 0) {
+        $stmt->close();
+        desconectar($conn);
+        return false;
+    }
+    
+    $vehiculo = $result->fetch_assoc();
+    $stmt->close();
+    desconectar($conn);
+    
+    // Verificar que el vehículo esté en taller
+    return $vehiculo['estado'] === 'EN_TALLER';
+}
+
+function validarTaller($id_taller) {
+    $conn = conectar();
+    $sql = "SELECT id_taller FROM talleres WHERE id_taller = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_taller);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $exists = $result->num_rows > 0;
+    $stmt->close();
+    desconectar($conn);
+    return $exists;
+}
+
 // Procesar operaciones CRUD
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $operacion = $_POST['operacion'] ?? '';
@@ -29,29 +141,39 @@ function crearMantenimiento() {
     global $conn;
     $conn = conectar();
     
-    $id_vehiculo = $_POST['id_vehiculo'] ?? '';
-    $id_taller = $_POST['id_taller'] ?? '';
-    $descripcion_mantenimiento = $_POST['descripcion_mantenimiento'] ?? '';
-    $fecha_mantenimiento = $_POST['fecha_mantenimiento'] ?? '';
-    $costo_mantenimiento = $_POST['costo_mantenimiento'] ?? '';
+    // Validar datos
+    $errores = validarDatosMantenimiento($_POST);
     
-    // Validar que el vehículo existe
-    if (!validarVehiculo($id_vehiculo)) {
-        $_SESSION['mensaje'] = "Error: El vehículo seleccionado no existe";
+    // Verificar existencia del vehículo y que esté en taller
+    if (empty($errores)) {
+        if (!validarVehiculo($_POST['id_vehiculo'])) {
+            $errores[] = "El vehículo seleccionado no existe o no está en taller";
+        }
+    }
+    
+    // Verificar existencia del taller
+    if (empty($errores)) {
+        if (!validarTaller($_POST['id_taller'])) {
+            $errores[] = "El taller seleccionado no existe";
+        }
+    }
+    
+    if (!empty($errores)) {
+        $_SESSION['mensaje'] = "Errores de validación:<br>" . implode("<br>", $errores);
         $_SESSION['tipo_mensaje'] = "error";
         desconectar($conn);
         header('Location: mantenimiento_vehiculos.php');
         exit();
     }
     
-    // Validar que el taller existe
-    if (!validarTaller($id_taller)) {
-        $_SESSION['mensaje'] = "Error: El taller seleccionado no existe";
-        $_SESSION['tipo_mensaje'] = "error";
-        desconectar($conn);
-        header('Location: mantenimiento_vehiculos.php');
-        exit();
-    }
+    $id_vehiculo = intval($_POST['id_vehiculo']);
+    $id_taller = intval($_POST['id_taller']);
+    $descripcion_mantenimiento = trim($_POST['descripcion_mantenimiento']);
+    $fecha_mantenimiento = $_POST['fecha_mantenimiento'];
+    $costo_mantenimiento = floatval($_POST['costo_mantenimiento']);
+    
+    // Redondear costo a 2 decimales
+    $costo_mantenimiento = round($costo_mantenimiento, 2);
     
     $sql = "INSERT INTO mantenimiento_vehiculo (id_vehiculo, id_taller, descripcion_mantenimiento, fecha_mantenimiento, costo_mantenimiento) 
             VALUES (?, ?, ?, ?, ?)";
@@ -77,30 +199,49 @@ function actualizarMantenimiento() {
     global $conn;
     $conn = conectar();
     
-    $id_mantenimiento = $_POST['id_mantenimiento'] ?? '';
-    $id_vehiculo = $_POST['id_vehiculo'] ?? '';
-    $id_taller = $_POST['id_taller'] ?? '';
-    $descripcion_mantenimiento = $_POST['descripcion_mantenimiento'] ?? '';
-    $fecha_mantenimiento = $_POST['fecha_mantenimiento'] ?? '';
-    $costo_mantenimiento = $_POST['costo_mantenimiento'] ?? '';
-    
-    // Validar que el vehículo existe
-    if (!validarVehiculo($id_vehiculo)) {
-        $_SESSION['mensaje'] = "Error: El vehículo seleccionado no existe";
+    // Validar ID de mantenimiento
+    if (empty($_POST['id_mantenimiento']) || !is_numeric($_POST['id_mantenimiento']) || $_POST['id_mantenimiento'] <= 0) {
+        $_SESSION['mensaje'] = "ID de mantenimiento inválido";
         $_SESSION['tipo_mensaje'] = "error";
         desconectar($conn);
         header('Location: mantenimiento_vehiculos.php');
         exit();
     }
     
-    // Validar que el taller existe
-    if (!validarTaller($id_taller)) {
-        $_SESSION['mensaje'] = "Error: El taller seleccionado no existe";
+    // Validar datos
+    $errores = validarDatosMantenimiento($_POST);
+    
+    // Verificar existencia del vehículo y que esté en taller
+    if (empty($errores)) {
+        if (!validarVehiculo($_POST['id_vehiculo'])) {
+            $errores[] = "El vehículo seleccionado no existe o no está en taller";
+        }
+    }
+    
+    // Verificar existencia del taller
+    if (empty($errores)) {
+        if (!validarTaller($_POST['id_taller'])) {
+            $errores[] = "El taller seleccionado no existe";
+        }
+    }
+    
+    if (!empty($errores)) {
+        $_SESSION['mensaje'] = "Errores de validación:<br>" . implode("<br>", $errores);
         $_SESSION['tipo_mensaje'] = "error";
         desconectar($conn);
         header('Location: mantenimiento_vehiculos.php');
         exit();
     }
+    
+    $id_mantenimiento = intval($_POST['id_mantenimiento']);
+    $id_vehiculo = intval($_POST['id_vehiculo']);
+    $id_taller = intval($_POST['id_taller']);
+    $descripcion_mantenimiento = trim($_POST['descripcion_mantenimiento']);
+    $fecha_mantenimiento = $_POST['fecha_mantenimiento'];
+    $costo_mantenimiento = floatval($_POST['costo_mantenimiento']);
+    
+    // Redondear costo a 2 decimales
+    $costo_mantenimiento = round($costo_mantenimiento, 2);
     
     $sql = "UPDATE mantenimiento_vehiculo 
             SET id_vehiculo = ?, id_taller = ?, descripcion_mantenimiento = ?, 
@@ -130,53 +271,112 @@ function eliminarMantenimiento() {
     
     $id_mantenimiento = $_POST['id_mantenimiento'] ?? '';
     
+    // Validar que el ID no esté vacío
+    if (empty($id_mantenimiento) || !is_numeric($id_mantenimiento) || $id_mantenimiento <= 0) {
+        $_SESSION['mensaje'] = "Error: No se proporcionó un ID de mantenimiento válido.";
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: mantenimiento_vehiculos.php');
+        exit();
+    }
+    
+    $id_mantenimiento = intval($id_mantenimiento);
+    
     try {
-        // Verificar si el mantenimiento está siendo referenciado en otras tablas
-        // Agrega aquí las verificaciones para otras tablas si es necesario
-        // Por ejemplo:
-        // $check_facturas = $conn->prepare("SELECT COUNT(*) as count FROM facturas WHERE id_mantenimiento = ?");
-        // $check_facturas->bind_param("i", $id_mantenimiento);
-        // $check_facturas->execute();
-        // $result_facturas = $check_facturas->get_result();
-        // $row_facturas = $result_facturas->fetch_assoc();
-        // $check_facturas->close();
+        // Primero verificar si el mantenimiento existe
+        $check_mantenimiento = $conn->prepare("SELECT id_mantenimiento FROM mantenimiento_vehiculo WHERE id_mantenimiento = ?");
+        if (!$check_mantenimiento) {
+            throw new Exception("Error al preparar la consulta: " . $conn->error);
+        }
         
-        // if ($row_facturas['count'] > 0) {
-        //     $_SESSION['mensaje'] = "No se puede eliminar el mantenimiento porque está siendo utilizado en facturas registradas.";
-        //     $_SESSION['tipo_mensaje'] = "error";
-        //     desconectar($conn);
-        //     header('Location: mantenimiento_vehiculos.php');
-        //     exit();
-        // }
+        $check_mantenimiento->bind_param("i", $id_mantenimiento);
+        
+        if (!$check_mantenimiento->execute()) {
+            throw new Exception("Error al ejecutar la consulta: " . $check_mantenimiento->error);
+        }
+        
+        $result_mantenimiento = $check_mantenimiento->get_result();
+        
+        if ($result_mantenimiento->num_rows === 0) {
+            $_SESSION['mensaje'] = "Error: El mantenimiento que intenta eliminar no existe en el sistema.";
+            $_SESSION['tipo_mensaje'] = "error";
+            $check_mantenimiento->close();
+            desconectar($conn);
+            header('Location: mantenimiento_vehiculos.php');
+            exit();
+        }
+        $check_mantenimiento->close();
+        
+        // Verificar si existe la tabla facturas y si tiene relación
+        $check_tabla_facturas = $conn->query("SHOW TABLES LIKE 'facturas'");
+        if ($check_tabla_facturas && $check_tabla_facturas->num_rows > 0) {
+            // Verificar si hay registros relacionados
+            $check_relacion = $conn->prepare("SELECT COUNT(*) as count FROM facturas WHERE id_mantenimiento = ?");
+            if ($check_relacion) {
+                $check_relacion->bind_param("i", $id_mantenimiento);
+                $check_relacion->execute();
+                $result_relacion = $check_relacion->get_result();
+                $row_relacion = $result_relacion->fetch_assoc();
+                $check_relacion->close();
+                
+                if ($row_relacion['count'] > 0) {
+                    $_SESSION['mensaje'] = "No se puede eliminar el mantenimiento porque está siendo utilizado en facturas registradas (" . $row_relacion['count'] . " facturas relacionadas).";
+                    $_SESSION['tipo_mensaje'] = "error";
+                    desconectar($conn);
+                    header('Location: mantenimiento_vehiculos.php');
+                    exit();
+                }
+            }
+        }
         
         // Si no hay referencias, proceder con la eliminación
         $sql = "DELETE FROM mantenimiento_vehiculo WHERE id_mantenimiento = ?";
         $stmt = $conn->prepare($sql);
+        
+        if (!$stmt) {
+            throw new Exception("Error al preparar la consulta de eliminación: " . $conn->error);
+        }
+        
         $stmt->bind_param("i", $id_mantenimiento);
         
         if ($stmt->execute()) {
-            $_SESSION['mensaje'] = "Mantenimiento eliminado exitosamente";
-            $_SESSION['tipo_mensaje'] = "success";
+            if ($stmt->affected_rows > 0) {
+                $_SESSION['mensaje'] = "Mantenimiento eliminado exitosamente";
+                $_SESSION['tipo_mensaje'] = "success";
+            } else {
+                $_SESSION['mensaje'] = "No se pudo eliminar el mantenimiento. Es posible que ya haya sido eliminado o no exista.";
+                $_SESSION['tipo_mensaje'] = "error";
+            }
         } else {
-            // Capturar cualquier otro error que pueda ocurrir
-            $_SESSION['mensaje'] = "Error al eliminar mantenimiento: " . $conn->error;
-            $_SESSION['tipo_mensaje'] = "error";
+            $error = $stmt->error;
+            if (strpos($error, 'foreign key constraint') !== false) {
+                $_SESSION['mensaje'] = "No se puede eliminar el mantenimiento porque está siendo utilizado en otros registros del sistema.";
+                $_SESSION['tipo_mensaje'] = "error";
+            } else {
+                $_SESSION['mensaje'] = "Error al eliminar mantenimiento: " . $error;
+                $_SESSION['tipo_mensaje'] = "error";
+            }
         }
         
         $stmt->close();
         
     } catch (mysqli_sql_exception $e) {
         // Capturar excepciones específicas de MySQL
-        if (strpos($e->getMessage(), 'foreign key constraint fails') !== false) {
+        $error_message = $e->getMessage();
+        
+        if (strpos($error_message, 'foreign key constraint fails') !== false) {
             $_SESSION['mensaje'] = "No se puede eliminar el mantenimiento porque está siendo utilizado en otros registros del sistema.";
             $_SESSION['tipo_mensaje'] = "error";
+        } else if (strpos($error_message, 'Unknown column') !== false) {
+            $_SESSION['mensaje'] = "Error en la consulta a la base de datos. Por favor, contacte al administrador del sistema.";
+            $_SESSION['tipo_mensaje'] = "error";
         } else {
-            $_SESSION['mensaje'] = "Error al eliminar mantenimiento: " . $e->getMessage();
+            $_SESSION['mensaje'] = "Error de base de datos: " . $error_message;
             $_SESSION['tipo_mensaje'] = "error";
         }
     } catch (Exception $e) {
         // Capturar cualquier otra excepción
-        $_SESSION['mensaje'] = "Error al eliminar mantenimiento: " . $e->getMessage();
+        $_SESSION['mensaje'] = "Error inesperado: " . $e->getMessage();
         $_SESSION['tipo_mensaje'] = "error";
     }
     
@@ -185,34 +385,7 @@ function eliminarMantenimiento() {
     exit();
 }
 
-// Funciones de validación
-function validarVehiculo($id_vehiculo) {
-    $conn = conectar();
-    $sql = "SELECT id_vehiculo FROM vehiculos WHERE id_vehiculo = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $id_vehiculo);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $exists = $result->num_rows > 0;
-    $stmt->close();
-    desconectar($conn);
-    return $exists;
-}
-
-function validarTaller($id_taller) {
-    $conn = conectar();
-    $sql = "SELECT id_taller FROM talleres WHERE id_taller = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $id_taller);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $exists = $result->num_rows > 0;
-    $stmt->close();
-    desconectar($conn);
-    return $exists;
-}
-
-// Obtener datos para los selectores - CORREGIDO: Solo vehículos en taller
+// Obtener datos para los selectores - Solo vehículos en taller
 function obtenerVehiculos() {
     $conn = conectar();
     $sql = "SELECT id_vehiculo, no_placa, marca_vehiculo, modelo_vehiculo 
@@ -360,19 +533,24 @@ $mantenimientos = obtenerMantenimientos();
                 
                 <div class="col-md-4">
                     <label class="form-label" for="fecha_mantenimiento">Fecha de Mantenimiento:</label>
-                    <input type="date" class="form-control" id="fecha_mantenimiento" name="fecha_mantenimiento" required <?php echo empty($vehiculos) ? 'disabled' : ''; ?>>
+                    <input type="date" class="form-control" id="fecha_mantenimiento" name="fecha_mantenimiento" 
+                           max="<?php echo date('Y-m-d'); ?>" required <?php echo empty($vehiculos) ? 'disabled' : ''; ?>>
+                    <div class="form-text">No puede ser una fecha futura</div>
                 </div>
                 
                 <div class="col-md-6">
                     <label class="form-label" for="costo_mantenimiento">Costo (Q):</label>
                     <input type="number" class="form-control" id="costo_mantenimiento" name="costo_mantenimiento" 
-                           step="0.01" min="0" required placeholder="Ej. 1250.00" <?php echo empty($vehiculos) ? 'disabled' : ''; ?>>
+                           step="0.01" min="0.01" max="1000000" required placeholder="Ej. 1250.00" <?php echo empty($vehiculos) ? 'disabled' : ''; ?>>
+                    <div class="form-text">Mínimo Q 0.01, máximo Q 1,000,000.00</div>
                 </div>
                 
                 <div class="col-12">
                     <label class="form-label" for="descripcion_mantenimiento">Descripción del Mantenimiento:</label>
                     <textarea class="form-control" id="descripcion_mantenimiento" name="descripcion_mantenimiento" 
-                              rows="3" required placeholder="Ej. Cambio de aceite, reparación de frenos, etc." <?php echo empty($vehiculos) ? 'disabled' : ''; ?>></textarea>
+                              rows="3" maxlength="500" required 
+                              placeholder="Ej. Cambio de aceite, reparación de frenos, etc." <?php echo empty($vehiculos) ? 'disabled' : ''; ?>></textarea>
+                    <div class="form-text">Mínimo 5 caracteres, máximo 500 caracteres</div>
                 </div>
             </form>
 
@@ -404,8 +582,17 @@ $mantenimientos = obtenerMantenimientos();
                             <td><?php echo htmlspecialchars($mantenimiento['no_placa'] . ' - ' . $mantenimiento['marca_vehiculo']); ?></td>
                             <td><?php echo htmlspecialchars($mantenimiento['nombre_taller'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($mantenimiento['fecha_mantenimiento']); ?></td>
-                            <td>Q<?php echo number_format($mantenimiento['costo_mantenimiento'], 2); ?></td>
-                            <td><?php echo htmlspecialchars($mantenimiento['descripcion_mantenimiento']); ?></td>
+                            <td class="text-end fw-bold">Q <?php echo number_format($mantenimiento['costo_mantenimiento'], 2); ?></td>
+                            <td class="descripcion-cell" title="<?php echo htmlspecialchars($mantenimiento['descripcion_mantenimiento']); ?>">
+                                <?php 
+                                $descripcion = $mantenimiento['descripcion_mantenimiento'];
+                                if (strlen($descripcion) > 50) {
+                                    echo htmlspecialchars(substr($descripcion, 0, 50)) . '...';
+                                } else {
+                                    echo htmlspecialchars($descripcion);
+                                }
+                                ?>
+                            </td>
                             <td>
                                 <button class="btn btn-sm btn-primary btn-action editar-btn" 
                                         data-id="<?php echo $mantenimiento['id_mantenimiento']; ?>"

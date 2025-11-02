@@ -88,20 +88,129 @@ function eliminarProveedor() {
     
     $id_proveedor = $_POST['id_proveedor'] ?? '';
     
-    $sql = "DELETE FROM proveedores WHERE id_proveedor = ?";
+    // Validar que el ID no esté vacío
+    if (empty($id_proveedor)) {
+        $_SESSION['mensaje'] = "Error: No se proporcionó un ID de proveedor válido.";
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: gestion_proveedores.php');
+        exit();
+    }
     
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $id_proveedor);
-    
-    if ($stmt->execute()) {
-        $_SESSION['mensaje'] = "Proveedor eliminado exitosamente";
-        $_SESSION['tipo_mensaje'] = "success";
-    } else {
-        $_SESSION['mensaje'] = "Error al eliminar proveedor: " . $conn->error;
+    try {
+        // Primero verificar si el proveedor existe
+        $check_proveedor = $conn->prepare("SELECT id_proveedor FROM proveedores WHERE id_proveedor = ?");
+        if (!$check_proveedor) {
+            throw new Exception("Error al preparar la consulta: " . $conn->error);
+        }
+        
+        $check_proveedor->bind_param("i", $id_proveedor);
+        
+        if (!$check_proveedor->execute()) {
+            throw new Exception("Error al ejecutar la consulta: " . $check_proveedor->error);
+        }
+        
+        $result_proveedor = $check_proveedor->get_result();
+        
+        if ($result_proveedor->num_rows === 0) {
+            $_SESSION['mensaje'] = "Error: El proveedor que intenta eliminar no existe en el sistema.";
+            $_SESSION['tipo_mensaje'] = "error";
+            $check_proveedor->close();
+            desconectar($conn);
+            header('Location: gestion_proveedores.php');
+            exit();
+        }
+        $check_proveedor->close();
+        
+        // Verificar si existe la tabla compras_mobiliario y si tiene relación con proveedores
+        $check_tabla_compras = $conn->query("SHOW TABLES LIKE 'compras_mobiliario'");
+        if ($check_tabla_compras && $check_tabla_compras->num_rows > 0) {
+            // La tabla existe, verificar si hay columnas que referencien proveedores
+            $check_columnas = $conn->query("SHOW COLUMNS FROM compras_mobiliario");
+            $tiene_relacion = false;
+            $columna_relacion = '';
+            
+            while ($columna = $check_columnas->fetch_assoc()) {
+                if (strpos($columna['Field'], 'proveedor') !== false || 
+                    strpos($columna['Field'], 'id_proveedor') !== false) {
+                    $tiene_relacion = true;
+                    $columna_relacion = $columna['Field'];
+                    break;
+                }
+            }
+            
+            if ($tiene_relacion && !empty($columna_relacion)) {
+                // Verificar si hay registros relacionados
+                $check_relacion = $conn->prepare("SELECT COUNT(*) as count FROM compras_mobiliario WHERE {$columna_relacion} = ?");
+                if ($check_relacion) {
+                    $check_relacion->bind_param("i", $id_proveedor);
+                    $check_relacion->execute();
+                    $result_relacion = $check_relacion->get_result();
+                    $row_relacion = $result_relacion->fetch_assoc();
+                    $check_relacion->close();
+                    
+                    if ($row_relacion['count'] > 0) {
+                        $_SESSION['mensaje'] = "No se puede eliminar el proveedor porque está siendo utilizado en compras de mobiliario (" . $row_relacion['count'] . " registros relacionados). Primero debe eliminar o modificar los registros relacionados en las compras.";
+                        $_SESSION['tipo_mensaje'] = "error";
+                        desconectar($conn);
+                        header('Location: gestion_proveedores.php');
+                        exit();
+                    }
+                }
+            }
+        }
+        
+        // Si no hay referencias, proceder con la eliminación
+        $sql = "DELETE FROM proveedores WHERE id_proveedor = ?";
+        $stmt = $conn->prepare($sql);
+        
+        if (!$stmt) {
+            throw new Exception("Error al preparar la consulta de eliminación: " . $conn->error);
+        }
+        
+        $stmt->bind_param("i", $id_proveedor);
+        
+        if ($stmt->execute()) {
+            if ($stmt->affected_rows > 0) {
+                $_SESSION['mensaje'] = "Proveedor eliminado exitosamente";
+                $_SESSION['tipo_mensaje'] = "success";
+            } else {
+                $_SESSION['mensaje'] = "No se pudo eliminar el proveedor. Es posible que ya haya sido eliminado o no exista.";
+                $_SESSION['tipo_mensaje'] = "error";
+            }
+        } else {
+            $error = $stmt->error;
+            if (strpos($error, 'foreign key constraint') !== false) {
+                $_SESSION['mensaje'] = "No se puede eliminar el proveedor porque está siendo utilizado en otros registros del sistema. Verifique que no existan registros relacionados en las compras.";
+                $_SESSION['tipo_mensaje'] = "error";
+            } else {
+                $_SESSION['mensaje'] = "Error al eliminar proveedor: " . $error;
+                $_SESSION['tipo_mensaje'] = "error";
+            }
+        }
+        
+        $stmt->close();
+        
+    } catch (mysqli_sql_exception $e) {
+        // Capturar excepciones específicas de MySQL
+        $error_message = $e->getMessage();
+        
+        if (strpos($error_message, 'foreign key constraint fails') !== false) {
+            $_SESSION['mensaje'] = "No se puede eliminar el proveedor porque está siendo utilizado en otros registros del sistema. Verifique que no existan registros relacionados en las compras.";
+            $_SESSION['tipo_mensaje'] = "error";
+        } else if (strpos($error_message, 'Unknown column') !== false) {
+            $_SESSION['mensaje'] = "Error en la consulta a la base de datos. Por favor, contacte al administrador del sistema.";
+            $_SESSION['tipo_mensaje'] = "error";
+        } else {
+            $_SESSION['mensaje'] = "Error de base de datos: " . $error_message;
+            $_SESSION['tipo_mensaje'] = "error";
+        }
+    } catch (Exception $e) {
+        // Capturar cualquier otra excepción
+        $_SESSION['mensaje'] = "Error inesperado: " . $e->getMessage();
         $_SESSION['tipo_mensaje'] = "error";
     }
     
-    $stmt->close();
     desconectar($conn);
     header('Location: gestion_proveedores.php');
     exit();
@@ -135,57 +244,7 @@ $proveedores = obtenerProveedores();
     <title>Gestión de Proveedores - Marina Roja</title>
     <!-- Google Fonts: Poppins -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body, h1, h2, h3, h4, h5, h6, label, input, button, table, th, td {
-            font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
-        }
-        .mensaje {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-        }
-        .mensaje.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .mensaje.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .btn-action {
-            margin: 2px;
-        }
-        .debug-info {
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            font-size: 12px;
-        }
-        .table-responsive {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-        .badge-proveedor {
-            background-color: #6f42c1;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        .email-cell {
-            word-break: break-all;
-        }
-        .info-proveedor {
-            background-color: #e9ecef;
-            border: 1px solid #dee2e6;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-    </style>
+    
     <!-- Frameworks y librerías base -->
     <link rel="stylesheet" href="../../css/bootstrap.min.css">
     <link rel="stylesheet" href="../../css/diseñoModulos.css">
@@ -201,24 +260,24 @@ $proveedores = obtenerProveedores();
     </header>
 
     <main class="container my-4">
-        <!-- Mostrar mensajes -->
+        <!-- Mostrar mensajes con SweetAlert2 -->
         <?php if (isset($_SESSION['mensaje'])): ?>
-            <div class="mensaje <?php echo $_SESSION['tipo_mensaje']; ?>">
-                <?php 
-                echo htmlspecialchars($_SESSION['mensaje']); 
-                unset($_SESSION['mensaje']);
-                unset($_SESSION['tipo_mensaje']);
-                ?>
-            </div>
-        <?php endif; ?>
-
-        <!-- Debug info -->
-        <div class="debug-info">
-            <strong>Debug:</strong> 
+            <script>
+                window.__mensaje = {
+                    text: <?php echo json_encode($_SESSION['mensaje']); ?>,
+                    tipo: <?php echo json_encode($_SESSION['tipo_mensaje'] ?? 'error'); ?>
+                };
+            </script>
+            <noscript>
+                <div class="alert alert-<?php echo ($_SESSION['tipo_mensaje'] ?? '') === 'success' ? 'success' : 'danger'; ?>">
+                    <?php echo htmlspecialchars($_SESSION['mensaje']); ?>
+                </div>
+            </noscript>
             <?php 
-            echo "Proveedores registrados: " . count($proveedores);
+            unset($_SESSION['mensaje']);
+            unset($_SESSION['tipo_mensaje']);
             ?>
-        </div>
+        <?php endif; ?>
 
         <section class="card shadow p-4">
             <h2 class="card__title text-primary mb-4">FORMULARIO - REGISTRO DE PROVEEDORES</h2>
@@ -296,7 +355,7 @@ $proveedores = obtenerProveedores();
                                         data-telefono="<?php echo htmlspecialchars($proveedor['telefono_proveedor'] ?? ''); ?>">
                                     Editar
                                 </button>
-                                <form method="post" style="display:inline;" onsubmit="return confirm('¿Estás seguro de eliminar este proveedor?')">
+                                <form method="post" style="display:inline;" data-eliminar="true">
                                     <input type="hidden" name="operacion" value="eliminar_proveedor">
                                     <input type="hidden" name="id_proveedor" value="<?php echo $proveedor['id_proveedor']; ?>">
                                     <button type="submit" class="btn btn-sm btn-danger btn-action">Eliminar</button>
@@ -312,110 +371,10 @@ $proveedores = obtenerProveedores();
                     </tbody>
                 </table>
             </div>
-
         </section>
     </main>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('form-proveedores');
-            const btnNuevo = document.getElementById('btn-nuevo');
-            const btnGuardar = document.getElementById('btn-guardar');
-            const btnActualizar = document.getElementById('btn-actualizar');
-            const btnCancelar = document.getElementById('btn-cancelar');
-            const operacionInput = document.getElementById('operacion');
-            const idProveedorInput = document.getElementById('id_proveedor');
-
-            // Botón Nuevo
-            btnNuevo.addEventListener('click', function() {
-                limpiarFormulario();
-                mostrarBotonesGuardar();
-            });
-
-            // Botón Guardar (Crear)
-            btnGuardar.addEventListener('click', function() {
-                if (validarFormulario()) {
-                    operacionInput.value = 'crear_proveedor';
-                    form.submit();
-                }
-            });
-
-            // Botón Actualizar
-            btnActualizar.addEventListener('click', function() {
-                if (validarFormulario()) {
-                    operacionInput.value = 'actualizar_proveedor';
-                    form.submit();
-                }
-            });
-
-            // Botón Cancelar
-            btnCancelar.addEventListener('click', function() {
-                limpiarFormulario();
-                mostrarBotonesGuardar();
-            });
-
-            // Eventos para botones Editar
-            document.querySelectorAll('.editar-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const id = this.getAttribute('data-id');
-                    const nombre = this.getAttribute('data-nombre');
-                    const correo = this.getAttribute('data-correo');
-                    const telefono = this.getAttribute('data-telefono');
-
-                    // Llenar formulario
-                    idProveedorInput.value = id;
-                    document.getElementById('nombre_proveedor').value = nombre;
-                    document.getElementById('correo_proveedor').value = correo;
-                    document.getElementById('telefono_proveedor').value = telefono;
-
-                    mostrarBotonesActualizar();
-                });
-            });
-
-            function limpiarFormulario() {
-                form.reset();
-                idProveedorInput.value = '';
-                operacionInput.value = 'crear_proveedor';
-            }
-
-            function mostrarBotonesGuardar() {
-                btnGuardar.style.display = 'inline-block';
-                btnActualizar.style.display = 'none';
-                btnCancelar.style.display = 'none';
-            }
-
-            function mostrarBotonesActualizar() {
-                btnGuardar.style.display = 'none';
-                btnActualizar.style.display = 'inline-block';
-                btnCancelar.style.display = 'inline-block';
-            }
-
-            function validarFormulario() {
-                const nombre = document.getElementById('nombre_proveedor').value.trim();
-                const correo = document.getElementById('correo_proveedor').value.trim();
-
-                if (!nombre) {
-                    alert('El nombre del proveedor es requerido');
-                    return false;
-                }
-
-                // Validación opcional de email
-                if (correo && !isValidEmail(correo)) {
-                    alert('Por favor ingrese un correo electrónico válido');
-                    return false;
-                }
-
-                return true;
-            }
-
-            function isValidEmail(email) {
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                return emailRegex.test(email);
-            }
-
-            // Inicializar
-            limpiarFormulario();
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/SistemaWebRestaurante/javascript/gestion_proveedores.js"></script>
 </body>
 </html>

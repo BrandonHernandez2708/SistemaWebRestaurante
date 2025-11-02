@@ -8,6 +8,96 @@ if (!isset($_SESSION['id_usuario'])) {
     exit();
 }
 
+// Función para validar y sanitizar datos del detalle de compra
+function validarDatosDetalleCompra($datos) {
+    $errores = [];
+    
+    // Validar ID compra
+    if (empty($datos['id_compra_mobiliario']) || !is_numeric($datos['id_compra_mobiliario']) || $datos['id_compra_mobiliario'] <= 0) {
+        $errores[] = "El ID de la compra es inválido";
+    }
+    
+    // Validar ID mobiliario
+    if (empty($datos['id_mobiliario']) || !is_numeric($datos['id_mobiliario']) || $datos['id_mobiliario'] <= 0) {
+        $errores[] = "El ID del mobiliario es inválido";
+    }
+    
+    // Validar cantidad
+    if (!isset($datos['cantidad_de_compra']) || !is_numeric($datos['cantidad_de_compra'])) {
+        $errores[] = "La cantidad debe ser un número válido";
+    } else if ($datos['cantidad_de_compra'] <= 0) {
+        $errores[] = "La cantidad debe ser mayor a cero";
+    } else if ($datos['cantidad_de_compra'] > 10000) {
+        $errores[] = "La cantidad no puede ser mayor a 10,000 unidades";
+    }
+    
+    // Validar costo unitario
+    if (!isset($datos['costo_unitario']) || !is_numeric($datos['costo_unitario'])) {
+        $errores[] = "El costo unitario debe ser un número válido";
+    } else if ($datos['costo_unitario'] < 0) {
+        $errores[] = "El costo unitario no puede ser negativo";
+    } else if ($datos['costo_unitario'] == 0) {
+        $errores[] = "El costo unitario debe ser mayor a cero";
+    }
+    
+    // Validar formato del costo (máximo 2 decimales)
+    if (isset($datos['costo_unitario']) && is_numeric($datos['costo_unitario'])) {
+        $partes = explode('.', (string)$datos['costo_unitario']);
+        if (count($partes) > 1 && strlen($partes[1]) > 2) {
+            $errores[] = "El costo unitario no puede tener más de 2 decimales";
+        }
+        
+        // Validar que el costo no sea excesivamente alto
+        if ($datos['costo_unitario'] > 100000) {
+            $errores[] = "El costo unitario no puede ser mayor a Q 100,000.00";
+        }
+    }
+    
+    return $errores;
+}
+
+// Función para verificar existencia de la compra
+function verificarCompra($id_compra_mobiliario) {
+    $conn = conectar();
+    $sql = "SELECT id_compra_mobiliario FROM compras_mobiliario WHERE id_compra_mobiliario = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_compra_mobiliario);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $existe = $result->num_rows > 0;
+    $stmt->close();
+    desconectar($conn);
+    return $existe;
+}
+
+// Función para verificar existencia del mobiliario
+function verificarMobiliario($id_mobiliario) {
+    $conn = conectar();
+    $sql = "SELECT id_mobiliario FROM inventario_mobiliario WHERE id_mobiliario = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_mobiliario);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $existe = $result->num_rows > 0;
+    $stmt->close();
+    desconectar($conn);
+    return $existe;
+}
+
+// Función para verificar si ya existe el detalle (para evitar duplicados)
+function verificarDetalleExistente($id_compra_mobiliario, $id_mobiliario) {
+    $conn = conectar();
+    $sql = "SELECT * FROM detalle_compra_mobiliario WHERE id_compra_mobiliario = ? AND id_mobiliario = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ii", $id_compra_mobiliario, $id_mobiliario);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $existe = $result->num_rows > 0;
+    $stmt->close();
+    desconectar($conn);
+    return $existe;
+}
+
 // Procesar operaciones CRUD
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $operacion = $_POST['operacion'] ?? '';
@@ -29,11 +119,40 @@ function crearDetalleCompra() {
     global $conn;
     $conn = conectar();
     
-    $id_compra_mobiliario = $_POST['id_compra_mobiliario'] ?? '';
-    $id_mobiliario = $_POST['id_mobiliario'] ?? '';
-    $cantidad_de_compra = $_POST['cantidad_de_compra'] ?? 0;
-    $costo_unitario = $_POST['costo_unitario'] ?? 0;
+    // Validar datos
+    $errores = validarDatosDetalleCompra($_POST);
+    
+    // Verificar existencia de compra y mobiliario
+    if (empty($errores)) {
+        if (!verificarCompra($_POST['id_compra_mobiliario'])) {
+            $errores[] = "La compra seleccionada no existe";
+        }
+        if (!verificarMobiliario($_POST['id_mobiliario'])) {
+            $errores[] = "El mobiliario seleccionado no existe";
+        }
+        // Verificar si ya existe el detalle
+        if (verificarDetalleExistente($_POST['id_compra_mobiliario'], $_POST['id_mobiliario'])) {
+            $errores[] = "Ya existe un detalle para esta compra y mobiliario";
+        }
+    }
+    
+    if (!empty($errores)) {
+        $_SESSION['mensaje'] = "Errores de validación:<br>" . implode("<br>", $errores);
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: detalle_compras_mobiliario.php');
+        exit();
+    }
+    
+    $id_compra_mobiliario = intval($_POST['id_compra_mobiliario']);
+    $id_mobiliario = intval($_POST['id_mobiliario']);
+    $cantidad_de_compra = intval($_POST['cantidad_de_compra']);
+    $costo_unitario = floatval($_POST['costo_unitario']);
     $monto_total_de_mobiliario = $cantidad_de_compra * $costo_unitario;
+    
+    // Redondear a 2 decimales
+    $costo_unitario = round($costo_unitario, 2);
+    $monto_total_de_mobiliario = round($monto_total_de_mobiliario, 2);
     
     $sql = "INSERT INTO detalle_compra_mobiliario (id_compra_mobiliario, id_mobiliario, cantidad_de_compra, costo_unitario, monto_total_de_mobiliario) 
             VALUES (?, ?, ?, ?, ?)";
@@ -59,17 +178,54 @@ function actualizarDetalleCompra() {
     global $conn;
     $conn = conectar();
     
-    $id_compra_mobiliario = $_POST['id_compra_mobiliario'] ?? '';
-    $id_mobiliario = $_POST['id_mobiliario'] ?? '';
-    $cantidad_de_compra = $_POST['cantidad_de_compra'] ?? 0;
-    $costo_unitario = $_POST['costo_unitario'] ?? 0;
+    // Validar IDs originales
+    if (empty($_POST['id_compra_mobiliario_original']) || !is_numeric($_POST['id_compra_mobiliario_original']) || 
+        empty($_POST['id_mobiliario_original']) || !is_numeric($_POST['id_mobiliario_original'])) {
+        $_SESSION['mensaje'] = "IDs de detalle de compra inválidos";
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: detalle_compras_mobiliario.php');
+        exit();
+    }
+    
+    // Validar datos
+    $errores = validarDatosDetalleCompra($_POST);
+    
+    // Verificar existencia de compra y mobiliario
+    if (empty($errores)) {
+        if (!verificarCompra($_POST['id_compra_mobiliario'])) {
+            $errores[] = "La compra seleccionada no existe";
+        }
+        if (!verificarMobiliario($_POST['id_mobiliario'])) {
+            $errores[] = "El mobiliario seleccionado no existe";
+        }
+    }
+    
+    if (!empty($errores)) {
+        $_SESSION['mensaje'] = "Errores de validación:<br>" . implode("<br>", $errores);
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: detalle_compras_mobiliario.php');
+        exit();
+    }
+    
+    $id_compra_mobiliario_original = intval($_POST['id_compra_mobiliario_original']);
+    $id_mobiliario_original = intval($_POST['id_mobiliario_original']);
+    $id_compra_mobiliario = intval($_POST['id_compra_mobiliario']);
+    $id_mobiliario = intval($_POST['id_mobiliario']);
+    $cantidad_de_compra = intval($_POST['cantidad_de_compra']);
+    $costo_unitario = floatval($_POST['costo_unitario']);
     $monto_total_de_mobiliario = $cantidad_de_compra * $costo_unitario;
     
-    $sql = "UPDATE detalle_compra_mobiliario SET cantidad_de_compra = ?, costo_unitario = ?, monto_total_de_mobiliario = ? 
+    // Redondear a 2 decimales
+    $costo_unitario = round($costo_unitario, 2);
+    $monto_total_de_mobiliario = round($monto_total_de_mobiliario, 2);
+    
+    $sql = "UPDATE detalle_compra_mobiliario SET id_compra_mobiliario = ?, id_mobiliario = ?, cantidad_de_compra = ?, costo_unitario = ?, monto_total_de_mobiliario = ? 
             WHERE id_compra_mobiliario = ? AND id_mobiliario = ?";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("iddii", $cantidad_de_compra, $costo_unitario, $monto_total_de_mobiliario, $id_compra_mobiliario, $id_mobiliario);
+    $stmt->bind_param("iiiddii", $id_compra_mobiliario, $id_mobiliario, $cantidad_de_compra, $costo_unitario, $monto_total_de_mobiliario, $id_compra_mobiliario_original, $id_mobiliario_original);
     
     if ($stmt->execute()) {
         $_SESSION['mensaje'] = "Detalle de compra actualizado exitosamente";
@@ -93,13 +249,17 @@ function eliminarDetalleCompra() {
     $id_mobiliario = $_POST['id_mobiliario'] ?? '';
     
     // Validar que los IDs no estén vacíos
-    if (empty($id_compra_mobiliario) || empty($id_mobiliario)) {
+    if (empty($id_compra_mobiliario) || !is_numeric($id_compra_mobiliario) || $id_compra_mobiliario <= 0 ||
+        empty($id_mobiliario) || !is_numeric($id_mobiliario) || $id_mobiliario <= 0) {
         $_SESSION['mensaje'] = "Error: No se proporcionaron IDs válidos para eliminar el detalle.";
         $_SESSION['tipo_mensaje'] = "error";
         desconectar($conn);
         header('Location: detalle_compras_mobiliario.php');
         exit();
     }
+    
+    $id_compra_mobiliario = intval($id_compra_mobiliario);
+    $id_mobiliario = intval($id_mobiliario);
     
     try {
         // Primero verificar si el detalle existe
@@ -340,13 +500,13 @@ $mobiliarios = obtenerMobiliario();
                 <div class="col-md-2">
                     <label class="form-label" for="cantidad_de_compra">Cantidad:</label>
                     <input type="number" class="form-control" id="cantidad_de_compra" name="cantidad_de_compra" 
-                           min="1" required value="1">
+                           min="1" max="10000" required value="1">
                 </div>
                 
                 <div class="col-md-2">
                     <label class="form-label" for="costo_unitario">Costo Unitario (Q):</label>
                     <input type="number" step="0.01" class="form-control" id="costo_unitario" name="costo_unitario" 
-                           min="0" required placeholder="0.00">
+                           min="0.01" max="100000" required placeholder="0.00">
                 </div>
                 
                 <div class="col-md-4">
