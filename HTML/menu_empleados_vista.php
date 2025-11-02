@@ -152,14 +152,14 @@
 
             
             <li>
-                <a href="#" class="submenu-toggle"><span>👤</span>Consultas Inteligentes</a>
+                <a href="#" class="submenu-toggle"><span>💸</span>Consultas Inteligentes</a>
                 <ul class="submenu">
                     <li><a href="ChatGpt/chatgpt.php">Consultas con ChatGpt</a></li>
                 </ul>
             </li>
 
             <li>
-                <a href="#" class="submenu-toggle"><span>👤</span>Auditoria</a>
+                <a href="#" class="submenu-toggle"><span>🔒</span>Auditoria</a>
                 <ul class="submenu">
                     <li><a href="Bitacora/bitacora.php">Bitacora del sistema</a></li>
                 </ul>
