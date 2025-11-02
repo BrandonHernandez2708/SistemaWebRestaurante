@@ -25,7 +25,7 @@ if (!isset($_SESSION['id_usuario'])) {
   <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
     <h1 class="mb-0">🧾 Marea Roja | Bitácora de Actividades</h1>
     <ul class="nav nav-pills gap-2 mb-0">
-      <li class="nav-item"><a href="menu_empleados.php" class="nav-link">Regresar</a></li>
+     <a href="../menu_empleados_vista.php" class="btn-back"><i class="bi bi-arrow-left"></i>Regresar al Menú</a>
     </ul>
   </div>
 </header>

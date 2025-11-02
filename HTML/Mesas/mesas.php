@@ -26,10 +26,7 @@
     <h1 class="mb-0">🍽️ Marea Roja | Gestión de Mesas</h1>
     <ul class="nav nav-pills gap-3 mb-0">
       <li class="nav-item">
-        <a href="../menu_empleados.php" class="btn btn-dorado">Regresar</a>
-      </li>
-      <li class="nav-item">
-        <a href="../Reservaciones/reservaciones.php" class="btn btn-dorado">📅 Reservaciones</a>
+        <a href="../menu_empleados.php" class="btn-back"><i class="bi bi-arrow-left"></i>Regresar al Menú</a>
       </li>
   </ul>
 
@@ -69,7 +66,7 @@
 
       <div class="col-12 d-flex gap-2 mt-3">
         <button type="submit" class="btn btn-success">Insertar</button>
-        <button type="button" class="btn btn-danger">Actualizar</button>
+        <button type="button" class="btn btn-danger">Limpiar y Refrescar</button>
       </div>
     </form>
 
