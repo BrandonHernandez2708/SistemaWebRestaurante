@@ -1,10 +1,10 @@
+<!--Ernesto David Samayoa Jocol 0901-22-3415-->
 <?php
 session_start();
 require_once '../conexion.php';
 
-// ======================================================
-// 🔹 API: obtener puesto y sueldo base por empleado
-// ======================================================
+
+// Obtener puesto y sueldo base por empleado
 if (isset($_GET['action']) && $_GET['action'] === 'infoEmpleado' && isset($_GET['id'])) {
     $id = intval($_GET['id']);
     $conn = conectar();
@@ -23,17 +23,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'infoEmpleado' && isset($_GET[
     exit();
 }
 
-// ======================================================
-// 🔹 Verificar sesión
-// ======================================================
+
 if (!isset($_SESSION['id_usuario'])) {
     header('Location: ../login.php');
     exit();
 }
 
-// ======================================================
-// 🔹 CRUD PRINCIPAL
-// ======================================================
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $operacion = $_POST['operacion'] ?? '';
     switch ($operacion) {
@@ -43,14 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// ======================================================
-// 🔹 FUNCIONES CRUD
-// ======================================================
+
 function crearBonificacion() {
     $conn = conectar();
     $id_empleado = $_POST['id_empleado'] ?? '';
     $fecha = $_POST['fecha_bonificacion'] ?? '';
-    // Permitir horas extras decimales (p.ej. 1.5, 2.5)
     $horas = floatval($_POST['horas_extras'] ?? 0);
     $pago = floatval($_POST['pago_por_hora'] ?? 0.00);
 
@@ -62,11 +55,10 @@ function crearBonificacion() {
     }
 
     $total = $horas * $pago;
-    $sql = "INSERT INTO bonificaciones (id_empleado, fecha_bonificacion, horas_extras, pago_por_hora, monto_bonificacion)
-            VALUES (?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO bonificaciones (id_empleado, fecha_bonificacion, horas_extras, pago_por_hora)
+        VALUES (?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
-    // i: id_empleado, s: fecha, d: horas (decimal), d: pago, d: total
-    $stmt->bind_param('isddd', $id_empleado, $fecha, $horas, $pago, $total);
+    $stmt->bind_param('isdd', $id_empleado, $fecha, $horas, $pago);
     $stmt->execute();
 
     $_SESSION['mensaje'] = $stmt->affected_rows > 0 ? 'Horas extras registradas correctamente.' : 'Error al registrar.';
@@ -83,7 +75,6 @@ function actualizarBonificacion() {
     $id_bonificacion = $_POST['id_bonificacion'] ?? '';
     $id_empleado = $_POST['id_empleado'] ?? '';
     $fecha = $_POST['fecha_bonificacion'] ?? '';
-    // Permitir horas extras decimales
     $horas = floatval($_POST['horas_extras'] ?? 0);
     $pago = floatval($_POST['pago_por_hora'] ?? 0.00);
     $total = $horas * $pago;
@@ -96,15 +87,19 @@ function actualizarBonificacion() {
     }
 
     $sql = "UPDATE bonificaciones 
-            SET id_empleado=?, fecha_bonificacion=?, horas_extras=?, pago_por_hora=?, monto_bonificacion=? 
-            WHERE id_bonificacion=?";
+        SET id_empleado=?, fecha_bonificacion=?, horas_extras=?, pago_por_hora=? 
+        WHERE id_bonificacion=?";
     $stmt = $conn->prepare($sql);
-    // i: id_empleado, s: fecha, d: horas, d: pago, d: total, i: id_bonificacion
-    $stmt->bind_param('isdddi', $id_empleado, $fecha, $horas, $pago, $total, $id_bonificacion);
+    $stmt->bind_param('isddi', $id_empleado, $fecha, $horas, $pago, $id_bonificacion);
     $stmt->execute();
 
-    $_SESSION['mensaje'] = $stmt->affected_rows >= 0 ? 'Registro actualizado correctamente.' : 'No se realizaron cambios.';
-    $_SESSION['tipo_mensaje'] = 'success';
+    if ($stmt->affected_rows > 0) {
+        $_SESSION['mensaje'] = 'Registro actualizado correctamente.';
+        $_SESSION['tipo_mensaje'] = 'success';
+    } else {
+        $_SESSION['mensaje'] = 'No se realizaron cambios.';
+        $_SESSION['tipo_mensaje'] = 'info';
+    }
 
     $stmt->close();
     desconectar($conn);
@@ -129,9 +124,6 @@ function eliminarBonificacion() {
     exit();
 }
 
-// ======================================================
-// 🔹 Cargar empleados y bonificaciones
-// ======================================================
 $conn = conectar();
 $empleados_map = [];
 $res = $conn->query("SELECT id_empleado, CONCAT(nombre_empleado, ' ', apellido_empleado) AS nombre_completo FROM empleados");
@@ -162,9 +154,13 @@ desconectar($conn);
 <body>
 <header class="mb-4">
     <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
-        <h1 class="mb-0">Gestión de Horas Extras</h1>
+        <h1 class="mb-0">Recursos Humanos RH</h1>
         <ul class="nav nav-pills gap-2 mb-0">
-            <li class="nav-item"><a href="../menu_empleados.php" class="nav-link">Regresar al menú</a></li>
+            <li class="nav-item">
+                <a href="../menu_empleados.php" class="btn-back" aria-label="Regresar al menú principal">
+                    <span class="arrow">←</span><span>Regresar al Menú</span>
+                </a>
+            </li>
         </ul>
     </div>
 </header>
@@ -215,7 +211,7 @@ window.__mensaje = {
 
     <div class="col-md-2">
         <label class="form-label">Horas Extras</label>
-        <input type="number" class="form-control" name="horas_extras" id="horas_extras" step="0.25" min="0.25" placeholder="Ej. 1, 1.5, 2.5" required>
+        <input type="number" class="form-control" name="horas_extras" id="horas_extras" min="0.01" step="0.01" required>
     </div>
 
     <div class="col-md-2">
@@ -257,7 +253,7 @@ window.__mensaje = {
                         <td><?= $b['id_bonificacion']; ?></td>
                         <td><?= htmlspecialchars($b['nombre_empleado']); ?></td>
                         <td><?= $b['fecha_bonificacion']; ?></td>
-                        <td><?= $b['horas_extras']; ?></td>
+                        <td><?= number_format($b['horas_extras'], 2); ?></td>
                         <td>Q <?= number_format($b['pago_por_hora'], 2); ?></td>
                         <td>Q <?= number_format($b['monto_bonificacion'], 2); ?></td>
                         <td class="text-center">
@@ -268,7 +264,7 @@ window.__mensaje = {
                                 data-horas="<?= $b['horas_extras']; ?>"
                                 data-pago="<?= $b['pago_por_hora']; ?>"
                                 data-total="<?= $b['monto_bonificacion']; ?>">Editar</button>
-                            <form method="post" style="display:inline;">
+                            <form method="post" style="display:inline;" data-eliminar="true">
                                 <input type="hidden" name="operacion" value="eliminar">
                                 <input type="hidden" name="id_bonificacion" value="<?= $b['id_bonificacion']; ?>">
                                 <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>

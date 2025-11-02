@@ -1,3 +1,4 @@
+<!--Ernesto David Samayoa Jocol 0901-22-3415-->
 <?php
 session_start();
 require_once '../conexion.php';
@@ -25,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ---------------------- FUNCIONES CRUD ----------------------
-
 function crearTelefono() {
     $conn = conectar();
     $id_empleado = $_POST['id_empleado'] ?? '';
