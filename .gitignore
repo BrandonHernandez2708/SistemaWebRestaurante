@@ -44,3 +44,7 @@ Thumbs.db
 # Archivos de respaldo y pruebas locales
 test_env.php
 test_*.php
+
+# Permitir el archivo de ejemplo del entorno
+!.env.example
+
