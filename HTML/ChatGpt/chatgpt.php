@@ -26,7 +26,7 @@
     <h1 class="mb-0"> Marea Roja | Asistente SQL</h1>
        <ul class="nav nav-pills gap-3 mb-0">
       <li class="nav-item">
-        <a href="../menu_empleados.php" class="btn btn-dorado">Regresar</a>
+        <a href="../menu_empleados_vista.php" class="btn-back"><i class="bi bi-arrow-left"></i>Regresar al Menú</a>
       </li>
   </ul>
   </div>

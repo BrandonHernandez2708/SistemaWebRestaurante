@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
@@ -40,6 +41,12 @@ function crearPlato() {
     $stmt->bind_param("ssd", $nombre_plato, $descripcion, $precio_unitario);
     
     if ($stmt->execute()) {
+        registrarBitacora(
+            $conn,
+            "Platos",
+            "insertar",
+            "Registro #$nombre_plato insertado (Descripción: $descripcion, Precio unitario: $precio_unitario)"
+        );
         $_SESSION['mensaje'] = "Plato creado exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
@@ -69,6 +76,12 @@ function actualizarPlato() {
     $stmt->bind_param("ssdi", $nombre_plato, $descripcion, $precio_unitario, $id_plato);
     
     if ($stmt->execute()) {
+        registrarBitacora(
+            $conn,
+            "Platos",
+            "Actualizar",
+            "Registro #$nombre_plato actualizado (Descripción: $descripcion, Precio unitario: $precio_unitario)"
+        );
         $_SESSION['mensaje'] = "Plato actualizado exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
@@ -111,6 +124,12 @@ function eliminarPlato() {
     $stmt->bind_param("i", $id_plato);
     
     if ($stmt->execute()) {
+        registrarBitacora(
+            $conn,
+            "Platos",
+            "Eliminar",
+            "Registro #$id_plato eliminado"
+        );
         $_SESSION['mensaje'] = "Plato eliminado exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
@@ -150,10 +169,7 @@ $platos = obtenerPlatos();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Platos - Marea Roja</title>
 
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     
     <style>
@@ -197,12 +213,6 @@ $platos = obtenerPlatos();
             font-weight: 600;
         }
         
-        .badge-estado {
-            font-size: 0.75rem;
-            padding: 4px 8px;
-            border-radius: 6px;
-        }
-        
         .form-control:focus {
             border-color: #3b82f6;
             box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
@@ -221,7 +231,6 @@ $platos = obtenerPlatos();
         }
     </style>
 
-    <!-- Bootstrap y librerías base -->
     <link rel="stylesheet" href="../../css/bootstrap.min.css">
     <link rel="stylesheet" href="../../css/diseñoModulos.css">
 </head>
@@ -237,7 +246,6 @@ $platos = obtenerPlatos();
 </header>
 
 <main class="container my-4">
-    <!-- Mostrar mensajes -->
     <?php if (isset($_SESSION['mensaje'])): ?>
         <div class="mensaje <?php echo $_SESSION['tipo_mensaje']; ?>">
             <?php 
@@ -250,7 +258,7 @@ $platos = obtenerPlatos();
 
     <section class="card shadow p-4">
         <h2 class="card-title text-primary mb-4">
-            <i class="bi bi-egg-fried me-2"></i>FORMULARIO DE PLATOS
+            FORMULARIO DE PLATOS
         </h2>
 
         <form id="form-plato" method="post" class="row g-3">
@@ -259,7 +267,7 @@ $platos = obtenerPlatos();
             
             <div class="col-md-4">
                 <label class="form-label fw-semibold" for="nombre_plato">
-                    <i class="bi bi-tag me-1"></i>Nombre del Plato: *
+                    Nombre del Plato: *
                 </label>
                 <input type="text" class="form-control" id="nombre_plato" name="nombre_plato" 
                        required placeholder="Ej. Churrasco a la Parrilla" maxlength="120">
@@ -267,7 +275,7 @@ $platos = obtenerPlatos();
             
             <div class="col-md-4">
                 <label class="form-label fw-semibold" for="precio_unitario">
-                    <i class="bi bi-currency-dollar me-1"></i>Precio Unitario (Q): *
+                    Precio Unitario (Q): *
                 </label>
                 <input type="number" class="form-control" id="precio_unitario" name="precio_unitario" 
                        required placeholder="0.00" step="0.01" min="0">
@@ -275,7 +283,7 @@ $platos = obtenerPlatos();
             
             <div class="col-md-12">
                 <label class="form-label fw-semibold" for="descripcion">
-                    <i class="bi bi-card-text me-1"></i>Descripción:
+                    Descripción:
                 </label>
                 <textarea class="form-control" id="descripcion" name="descripcion" 
                           rows="3" placeholder="Descripción del plato, ingredientes principales, etc." maxlength="200"></textarea>
@@ -283,23 +291,13 @@ $platos = obtenerPlatos();
         </form>
 
         <div class="d-flex gap-2 mt-4">
-            <button id="btn-nuevo" type="button" class="btn btn-secondary">
-                <i class="bi bi-plus-circle me-1"></i>Nuevo
-            </button>
-            <button id="btn-guardar" type="button" class="btn btn-success">
-                <i class="bi bi-check-lg me-1"></i>Guardar
-            </button>
-            <button id="btn-actualizar" type="button" class="btn btn-warning" style="display:none;">
-                <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
-            </button>
-            <button id="btn-cancelar" type="button" class="btn btn-danger" style="display:none;">
-                <i class="bi bi-x-circle me-1"></i>Cancelar
-            </button>
+            <button id="btn-nuevo" type="button" class="btn btn-secondary">Nuevo</button>
+            <button id="btn-guardar" type="button" class="btn btn-success">Guardar</button>
+            <button id="btn-actualizar" type="button" class="btn btn-warning" style="display:none;">Actualizar</button>
+            <button id="btn-cancelar" type="button" class="btn btn-danger" style="display:none;">Cancelar</button>
         </div>
 
-        <h2 class="card-title mb-3 mt-5">
-            <i class="bi bi-list-ul me-2"></i>LISTA DE PLATOS
-        </h2>
+        <h2 class="card-title mb-3 mt-5">LISTA DE PLATOS</h2>
         
         <div class="table-responsive mt-3">
             <table class="table table-striped table-bordered" id="tabla-platos">
@@ -329,14 +327,12 @@ $platos = obtenerPlatos();
                                     data-nombre="<?php echo htmlspecialchars($plato['nombre_plato']); ?>"
                                     data-descripcion="<?php echo htmlspecialchars($plato['descripcion']); ?>"
                                     data-precio="<?php echo $plato['precio_unitario']; ?>">
-                                <i class="bi bi-pencil me-1"></i>Editar
+                                Editar
                             </button>
                             <form method="post" style="display:inline;" onsubmit="return confirm('¿Estás seguro de eliminar este plato?')">
                                 <input type="hidden" name="operacion" value="eliminar">
                                 <input type="hidden" name="id_plato" value="<?php echo $plato['id_plato']; ?>">
-                                <button type="submit" class="btn btn-sm btn-danger btn-action">
-                                    <i class="bi bi-trash me-1"></i>Eliminar
-                                </button>
+                                <button type="submit" class="btn btn-sm btn-danger btn-action">Eliminar</button>
                             </form>
                         </td>
                     </tr>
@@ -362,13 +358,11 @@ $platos = obtenerPlatos();
         const operacionInput = document.getElementById('operacion');
         const idPlatoInput = document.getElementById('id_plato');
 
-        // Botón Nuevo
         btnNuevo.addEventListener('click', function() {
             limpiarFormulario();
             mostrarBotonesGuardar();
         });
 
-        // Botón Guardar (Crear)
         btnGuardar.addEventListener('click', function() {
             if (validarFormulario()) {
                 operacionInput.value = 'crear';
@@ -376,7 +370,6 @@ $platos = obtenerPlatos();
             }
         });
 
-        // Botón Actualizar
         btnActualizar.addEventListener('click', function() {
             if (validarFormulario()) {
                 operacionInput.value = 'actualizar';
@@ -384,13 +377,11 @@ $platos = obtenerPlatos();
             }
         });
 
-        // Botón Cancelar
         btnCancelar.addEventListener('click', function() {
             limpiarFormulario();
             mostrarBotonesGuardar();
         });
 
-        // Eventos para botones Editar
         document.querySelectorAll('.editar-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = this.getAttribute('data-id');
@@ -398,7 +389,6 @@ $platos = obtenerPlatos();
                 const descripcion = this.getAttribute('data-descripcion');
                 const precio = this.getAttribute('data-precio');
 
-                // Llenar formulario
                 idPlatoInput.value = id;
                 document.getElementById('nombre_plato').value = nombre;
                 document.getElementById('descripcion').value = descripcion;

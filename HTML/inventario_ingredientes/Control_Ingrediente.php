@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
@@ -32,25 +33,21 @@ function crearControl() {
     $id_ingrediente = intval($_POST['id_ingrediente'] ?? '');
     $estado = $_POST['estado'] ?? 'OK';
     $fecha_entrada = $_POST['fecha_entrada'] ?? '';
-    $fecha_caducidad = $_POST['fecha_caducidad'] ?? '';
-    
-    // Si fecha_caducidad está vacía, establecer como NULL
-    if (empty($fecha_caducidad)) {
-        $fecha_caducidad = null;
-    }
+    $fecha_caducidad = $_POST['fecha_caducidad'] ?? null;
     
     $sql = "INSERT INTO control_ingredientes (id_ingrediente, estado, fecha_entrada, fecha_caducidad) 
             VALUES (?, ?, ?, ?)";
     
     $stmt = $conn->prepare($sql);
-    
-    if ($fecha_caducidad === null) {
-        $stmt->bind_param("isss", $id_ingrediente, $estado, $fecha_entrada, $fecha_caducidad);
-    } else {
-        $stmt->bind_param("isss", $id_ingrediente, $estado, $fecha_entrada, $fecha_caducidad);
-    }
+    $stmt->bind_param("isss", $id_ingrediente, $estado, $fecha_entrada, $fecha_caducidad);
     
     if ($stmt->execute()) {
+        registrarBitacora(
+            $conn,
+            "Control Inventario Ingredientes",
+            "insertar",
+            "Registro insertado (Id Ingrediente: $id_ingrediente, Estado: $estado, Fecha Entrada: $fecha_entrada, Fecha Caducidad: $fecha_caducidad)"
+        );
         $_SESSION['mensaje'] = "Control de ingrediente creado exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
@@ -72,25 +69,22 @@ function actualizarControl() {
     $id_ingrediente = intval($_POST['id_ingrediente'] ?? '');
     $estado = $_POST['estado'] ?? 'OK';
     $fecha_entrada = $_POST['fecha_entrada'] ?? '';
-    $fecha_caducidad = $_POST['fecha_caducidad'] ?? '';
+    $fecha_caducidad = $_POST['fecha_caducidad'] ?? null;
     
-    // Si fecha_caducidad está vacía, establecer como NULL
-    if (empty($fecha_caducidad)) {
-        $fecha_caducidad = null;
-    }
-    
-    $sql = "UPDATE control_ingredientes SET id_ingrediente = ?, estado = ?, fecha_entrada = ?, fecha_caducidad = ? 
+    $sql = "UPDATE control_ingredientes 
+            SET id_ingrediente = ?, estado = ?, fecha_entrada = ?, fecha_caducidad = ? 
             WHERE id_control = ?";
     
     $stmt = $conn->prepare($sql);
-    
-    if ($fecha_caducidad === null) {
-        $stmt->bind_param("isssi", $id_ingrediente, $estado, $fecha_entrada, $fecha_caducidad, $id_control);
-    } else {
-        $stmt->bind_param("isssi", $id_ingrediente, $estado, $fecha_entrada, $fecha_caducidad, $id_control);
-    }
+    $stmt->bind_param("isssi", $id_ingrediente, $estado, $fecha_entrada, $fecha_caducidad, $id_control);
     
     if ($stmt->execute()) {
+        registrarBitacora(
+            $conn,
+            "Control Inventario Ingredientes",
+            "Actualizar",
+            "Registro actualizado (Id Ingrediente: $id_ingrediente, Estado: $estado, Fecha Entrada: $fecha_entrada, Fecha Caducidad: $fecha_caducidad)"
+        );
         $_SESSION['mensaje'] = "Control de ingrediente actualizado exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
@@ -111,11 +105,16 @@ function eliminarControl() {
     $id_control = intval($_POST['id_control'] ?? '');
     
     $sql = "DELETE FROM control_ingredientes WHERE id_control = ?";
-    
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $id_control);
     
     if ($stmt->execute()) {
+        registrarBitacora(
+            $conn,
+            "Control Inventario Ingredientes",
+            "Eliminar",
+            "Registro eliminado (Id Control: $id_control)"
+        );
         $_SESSION['mensaje'] = "Control de ingrediente eliminado exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
@@ -129,7 +128,6 @@ function eliminarControl() {
     exit();
 }
 
-// Obtener todos los controles para mostrar en la tabla
 function obtenerControles() {
     $conn = conectar();
     $sql = "SELECT ci.*, i.nombre_ingrediente 
@@ -149,7 +147,6 @@ function obtenerControles() {
     return $controles;
 }
 
-// Obtener ingredientes para el dropdown
 function obtenerIngredientes() {
     $conn = conectar();
     $sql = "SELECT id_ingrediente, nombre_ingrediente FROM ingredientes ORDER BY nombre_ingrediente";
@@ -176,10 +173,7 @@ $ingredientes = obtenerIngredientes();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Ingredientes - Marea Roja</title>
 
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     
     <style>
@@ -233,14 +227,8 @@ $ingredientes = obtenerIngredientes();
             border-color: #3b82f6;
             box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
         }
-        
-        .form-check-input:checked {
-            background-color: #1e40af;
-            border-color: #1e40af;
-        }
     </style>
 
-    <!-- Bootstrap y librerías base -->
     <link rel="stylesheet" href="../../css/bootstrap.min.css">
     <link rel="stylesheet" href="../../css/diseñoModulos.css">
 </head>
@@ -256,7 +244,6 @@ $ingredientes = obtenerIngredientes();
 </header>
 
 <main class="container my-4">
-    <!-- Mostrar mensajes -->
     <?php if (isset($_SESSION['mensaje'])): ?>
         <div class="mensaje <?php echo $_SESSION['tipo_mensaje']; ?>">
             <?php 
@@ -268,18 +255,14 @@ $ingredientes = obtenerIngredientes();
     <?php endif; ?>
 
     <section class="card shadow p-4">
-        <h2 class="card-title text-primary mb-4">
-            <i class="bi bi-clipboard-check me-2"></i>CONTROL DE INGREDIENTES
-        </h2>
+        <h2 class="card-title text-primary mb-4">CONTROL DE INGREDIENTES</h2>
 
         <form id="form-control" method="post" class="row g-3">
             <input type="hidden" id="operacion" name="operacion" value="crear">
             <input type="hidden" id="id_control" name="id_control" value="">
             
             <div class="col-md-3">
-                <label class="form-label fw-semibold" for="id_ingrediente">
-                    <i class="bi bi-box-seam me-1"></i>Ingrediente: *
-                </label>
+                <label class="form-label fw-semibold" for="id_ingrediente">Ingrediente: *</label>
                 <select class="form-control" id="id_ingrediente" name="id_ingrediente" required>
                     <option value="">Seleccione un ingrediente</option>
                     <?php foreach($ingredientes as $ingrediente): ?>
@@ -291,9 +274,7 @@ $ingredientes = obtenerIngredientes();
             </div>
             
             <div class="col-md-3">
-                <label class="form-label fw-semibold" for="estado">
-                    <i class="bi bi-info-circle me-1"></i>Estado: *
-                </label>
+                <label class="form-label fw-semibold" for="estado">Estado: *</label>
                 <select class="form-control" id="estado" name="estado" required>
                     <option value="OK">OK</option>
                     <option value="POR_VENCER">POR VENCER</option>
@@ -302,38 +283,24 @@ $ingredientes = obtenerIngredientes();
             </div>
             
             <div class="col-md-3">
-                <label class="form-label fw-semibold" for="fecha_entrada">
-                    <i class="bi bi-calendar-plus me-1"></i>Fecha de Entrada: *
-                </label>
+                <label class="form-label fw-semibold" for="fecha_entrada">Fecha de Entrada: *</label>
                 <input type="date" class="form-control" id="fecha_entrada" name="fecha_entrada" required>
             </div>
             
             <div class="col-md-3">
-                <label class="form-label fw-semibold" for="fecha_caducidad">
-                    <i class="bi bi-calendar-x me-1"></i>Fecha de Caducidad:
-                </label>
+                <label class="form-label fw-semibold" for="fecha_caducidad">Fecha de Caducidad:</label>
                 <input type="date" class="form-control" id="fecha_caducidad" name="fecha_caducidad">
             </div>
         </form>
 
         <div class="d-flex gap-2 mt-4">
-            <button id="btn-nuevo" type="button" class="btn btn-secondary">
-                <i class="bi bi-plus-circle me-1"></i>Nuevo
-            </button>
-            <button id="btn-guardar" type="button" class="btn btn-success">
-                <i class="bi bi-check-lg me-1"></i>Guardar
-            </button>
-            <button id="btn-actualizar" type="button" class="btn btn-warning" style="display:none;">
-                <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
-            </button>
-            <button id="btn-cancelar" type="button" class="btn btn-danger" style="display:none;">
-                <i class="bi bi-x-circle me-1"></i>Cancelar
-            </button>
+            <button id="btn-nuevo" type="button" class="btn btn-secondary">Nuevo</button>
+            <button id="btn-guardar" type="button" class="btn btn-success">Guardar</button>
+            <button id="btn-actualizar" type="button" class="btn btn-warning" style="display:none;">Actualizar</button>
+            <button id="btn-cancelar" type="button" class="btn btn-danger" style="display:none;">Cancelar</button>
         </div>
 
-        <h2 class="card-title mb-3 mt-5">
-            <i class="bi bi-list-ul me-2"></i>LISTA DE CONTROLES
-        </h2>
+        <h2 class="card-title mb-3 mt-5">LISTA DE CONTROLES</h2>
         
         <div class="table-responsive mt-3">
             <table class="table table-striped table-bordered" id="tabla-controles">
@@ -353,14 +320,11 @@ $ingredientes = obtenerIngredientes();
                         <td><?php echo htmlspecialchars($control['id_control']); ?></td>
                         <td><?php echo htmlspecialchars($control['nombre_ingrediente']); ?></td>
                         <td>
-                            <?php 
-                            $badge_class = [
-                                'OK' => 'bg-success',
-                                'POR_VENCER' => 'bg-warning',
-                                'VENCIDO' => 'bg-danger'
-                            ][$control['estado']] ?? 'bg-secondary';
-                            ?>
-                            <span class="badge badge-estado <?php echo $badge_class; ?>">
+                            <span class="badge badge-estado 
+                                <?php 
+                                    echo $control['estado'] === 'OK' ? 'bg-success' : 
+                                        ($control['estado'] === 'POR_VENCER' ? 'bg-warning' : 'bg-danger'); 
+                                ?>">
                                 <?php echo htmlspecialchars($control['estado']); ?>
                             </span>
                         </td>
@@ -373,14 +337,12 @@ $ingredientes = obtenerIngredientes();
                                     data-estado="<?php echo $control['estado']; ?>"
                                     data-entrada="<?php echo $control['fecha_entrada']; ?>"
                                     data-caducidad="<?php echo $control['fecha_caducidad'] ?? ''; ?>">
-                                <i class="bi bi-pencil me-1"></i>Editar
+                                Editar
                             </button>
                             <form method="post" style="display:inline;" onsubmit="return confirm('¿Estás seguro de eliminar este control?')">
                                 <input type="hidden" name="operacion" value="eliminar">
                                 <input type="hidden" name="id_control" value="<?php echo $control['id_control']; ?>">
-                                <button type="submit" class="btn btn-sm btn-danger btn-action">
-                                    <i class="bi bi-trash me-1"></i>Eliminar
-                                </button>
+                                <button type="submit" class="btn btn-sm btn-danger btn-action">Eliminar</button>
                             </form>
                         </td>
                     </tr>
@@ -406,16 +368,13 @@ $ingredientes = obtenerIngredientes();
         const operacionInput = document.getElementById('operacion');
         const idControlInput = document.getElementById('id_control');
 
-        // Establecer fecha actual por defecto
         document.getElementById('fecha_entrada').valueAsDate = new Date();
 
-        // Botón Nuevo
         btnNuevo.addEventListener('click', function() {
             limpiarFormulario();
             mostrarBotonesGuardar();
         });
 
-        // Botón Guardar (Crear)
         btnGuardar.addEventListener('click', function() {
             if (validarFormulario()) {
                 operacionInput.value = 'crear';
@@ -423,7 +382,6 @@ $ingredientes = obtenerIngredientes();
             }
         });
 
-        // Botón Actualizar
         btnActualizar.addEventListener('click', function() {
             if (validarFormulario()) {
                 operacionInput.value = 'actualizar';
@@ -431,13 +389,11 @@ $ingredientes = obtenerIngredientes();
             }
         });
 
-        // Botón Cancelar
         btnCancelar.addEventListener('click', function() {
             limpiarFormulario();
             mostrarBotonesGuardar();
         });
 
-        // Eventos para botones Editar
         document.querySelectorAll('.editar-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = this.getAttribute('data-id');
@@ -446,7 +402,6 @@ $ingredientes = obtenerIngredientes();
                 const entrada = this.getAttribute('data-entrada');
                 const caducidad = this.getAttribute('data-caducidad');
 
-                // Llenar formulario
                 idControlInput.value = id;
                 document.getElementById('id_ingrediente').value = ingrediente;
                 document.getElementById('estado').value = estado;
@@ -461,7 +416,6 @@ $ingredientes = obtenerIngredientes();
             form.reset();
             idControlInput.value = '';
             operacionInput.value = 'crear';
-            // Restablecer fecha actual
             document.getElementById('fecha_entrada').valueAsDate = new Date();
         }
 

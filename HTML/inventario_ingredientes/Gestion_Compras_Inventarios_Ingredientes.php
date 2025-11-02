@@ -1,14 +1,13 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
-// Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
     header('Location: ../login.php');
     exit();
 }
 
-// Procesar operaciones CRUD
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $operacion = $_POST['operacion'] ?? '';
     
@@ -34,7 +33,6 @@ function crearCompra() {
     $fecha_de_compra = $_POST['fecha_de_compra'] ?? '';
     $monto_total_compra = floatval($_POST['monto_total_compra_q'] ?? 0);
     
-    // Verificar si el ID ya existe
     $sql_check = "SELECT id_compra_ingrediente FROM compras_ingrediente WHERE id_compra_ingrediente = ?";
     $stmt_check = $conn->prepare($sql_check);
     $stmt_check->bind_param("i", $id_compra_ingrediente);
@@ -58,6 +56,12 @@ function crearCompra() {
     $stmt->bind_param("iisd", $id_compra_ingrediente, $id_proveedor, $fecha_de_compra, $monto_total_compra);
     
     if ($stmt->execute()) {
+        registrarBitacora(
+            $conn,
+            "Compras Inventario Ingredientes",
+            "insertar",
+            "Registro #$id_compra_ingrediente insertado (Proveedor: $id_proveedor, Fecha: $fecha_de_compra, Monto: $monto_total_compra)"
+        );
         $_SESSION['mensaje'] = "Compra registrada exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
@@ -87,6 +91,12 @@ function actualizarCompra() {
     $stmt->bind_param("isdi", $id_proveedor, $fecha_de_compra, $monto_total_compra, $id_compra_ingrediente);
     
     if ($stmt->execute()) {
+        registrarBitacora(
+            $conn,
+            "Compras Inventario Ingredientes",
+            "Actualizar",
+            "Registro #$id_compra_ingrediente Actualizado (Proveedor: $id_proveedor, Fecha: $fecha_de_compra, Monto: $monto_total_compra)"
+        );
         $_SESSION['mensaje'] = "Compra actualizada exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
@@ -106,7 +116,6 @@ function eliminarCompra() {
     
     $id_compra_ingrediente = intval($_POST['id_compra_ingrediente'] ?? '');
     
-    // Verificar si la compra tiene detalles asociados
     $sql_check = "SELECT id_compra_ingrediente FROM detalle_compra_ingrediente WHERE id_compra_ingrediente = ? LIMIT 1";
     $stmt_check = $conn->prepare($sql_check);
     $stmt_check->bind_param("i", $id_compra_ingrediente);
@@ -124,11 +133,16 @@ function eliminarCompra() {
     $stmt_check->close();
     
     $sql = "DELETE FROM compras_ingrediente WHERE id_compra_ingrediente = ?";
-    
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $id_compra_ingrediente);
     
     if ($stmt->execute()) {
+        registrarBitacora(
+            $conn,
+            "Compras Inventario Ingredientes",
+            "Eliminar",
+            "Registro #$id_compra_ingrediente Eliminado"
+        );
         $_SESSION['mensaje'] = "Compra eliminada exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
     } else {
@@ -142,7 +156,6 @@ function eliminarCompra() {
     exit();
 }
 
-// Obtener todas las compras para mostrar en la tabla
 function obtenerCompras() {
     $conn = conectar();
     $sql = "SELECT ci.*, p.nombre_proveedor 
@@ -162,7 +175,6 @@ function obtenerCompras() {
     return $compras;
 }
 
-// Obtener proveedores para el dropdown
 function obtenerProveedores() {
     $conn = conectar();
     $sql = "SELECT id_proveedor, nombre_proveedor FROM proveedores ORDER BY nombre_proveedor";
@@ -189,76 +201,62 @@ $proveedores = obtenerProveedores();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Compras de Ingredientes - Marea Roja</title>
 
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     
     <style>
         body, h1, h2, h3, h4, h5, h6, label, input, button, table, th, td {
             font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
         }
-        
         .mensaje {
             padding: 12px;
             margin: 10px 0;
             border-radius: 8px;
             font-weight: 500;
         }
-        
         .mensaje.success {
             background-color: #d1fae5;
             color: #065f46;
             border: 1px solid #a7f3d0;
         }
-        
         .mensaje.error {
             background-color: #fee2e2;
             color: #991b1b;
             border: 1px solid #fecaca;
         }
-        
         .btn-action {
             margin: 1px;
             font-size: 0.875rem;
         }
-        
         .card {
             border: none;
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        
         .table th {
             background-color: #1e40af;
             color: white;
             font-weight: 600;
         }
-        
         .badge-estado {
             font-size: 0.75rem;
             padding: 4px 8px;
             border-radius: 6px;
         }
-        
         .form-control:focus {
             border-color: #3b82f6;
             box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
         }
-        
         .monto-alto {
             color: #059669;
             font-weight: bold;
         }
-        
         .campo-deshabilitado {
             background-color: #f8f9fa;
             color: #6c757d;
         }
     </style>
 
-    <!-- Bootstrap y librerías base -->
     <link rel="stylesheet" href="../../css/bootstrap.min.css">
     <link rel="stylesheet" href="../../css/diseñoModulos.css">
 </head>
@@ -274,7 +272,6 @@ $proveedores = obtenerProveedores();
 </header>
 
 <main class="container my-4">
-    <!-- Mostrar mensajes -->
     <?php if (isset($_SESSION['mensaje'])): ?>
         <div class="mensaje <?php echo $_SESSION['tipo_mensaje']; ?>">
             <?php 
@@ -287,7 +284,7 @@ $proveedores = obtenerProveedores();
 
     <section class="card shadow p-4">
         <h2 class="card-title text-primary mb-4">
-            <i class="bi bi-cart-plus me-2"></i>GESTIÓN DE COMPRAS DE INGREDIENTES
+            GESTIÓN DE COMPRAS DE INGREDIENTES
         </h2>
 
         <form id="form-compra" method="post" class="row g-3">
@@ -295,18 +292,13 @@ $proveedores = obtenerProveedores();
             <input type="hidden" id="id_compra_ingrediente" name="id_compra_ingrediente" value="">
             
             <div class="col-md-3">
-                <label class="form-label fw-semibold" for="id_compra_ingrediente_input">
-                    <i class="bi bi-hash me-1"></i>ID Compra: *
-                </label>
+                <label class="form-label fw-semibold" for="id_compra_ingrediente_input">ID Compra: *</label>
                 <input type="number" class="form-control" id="id_compra_ingrediente_input" 
-                       name="id_compra_ingrediente_input" required min="1" 
-                       placeholder="Ingrese el ID">
+                       name="id_compra_ingrediente_input" required min="1" placeholder="Ingrese el ID">
             </div>
             
             <div class="col-md-3">
-                <label class="form-label fw-semibold" for="id_proveedor">
-                    <i class="bi bi-truck me-1"></i>Proveedor: *
-                </label>
+                <label class="form-label fw-semibold" for="id_proveedor">Proveedor: *</label>
                 <select class="form-control" id="id_proveedor" name="id_proveedor" required>
                     <option value="">Seleccione un proveedor</option>
                     <?php foreach($proveedores as $proveedor): ?>
@@ -318,39 +310,25 @@ $proveedores = obtenerProveedores();
             </div>
             
             <div class="col-md-3">
-                <label class="form-label fw-semibold" for="fecha_de_compra">
-                    <i class="bi bi-calendar-date me-1"></i>Fecha de Compra: *
-                </label>
+                <label class="form-label fw-semibold" for="fecha_de_compra">Fecha de Compra: *</label>
                 <input type="date" class="form-control" id="fecha_de_compra" name="fecha_de_compra" required>
             </div>
             
             <div class="col-md-3">
-                <label class="form-label fw-semibold" for="monto_total_compra_q">
-                    <i class="bi bi-currency-dollar me-1"></i>Monto Total (Q): *
-                </label>
+                <label class="form-label fw-semibold" for="monto_total_compra_q">Monto Total (Q): *</label>
                 <input type="number" class="form-control" id="monto_total_compra_q" name="monto_total_compra_q" 
                        required placeholder="0.00" step="0.01" min="0">
             </div>
         </form>
 
         <div class="d-flex gap-2 mt-4">
-            <button id="btn-nuevo" type="button" class="btn btn-secondary">
-                <i class="bi bi-plus-circle me-1"></i>Nuevo
-            </button>
-            <button id="btn-guardar" type="button" class="btn btn-success">
-                <i class="bi bi-check-lg me-1"></i>Guardar
-            </button>
-            <button id="btn-actualizar" type="button" class="btn btn-warning" style="display:none;">
-                <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
-            </button>
-            <button id="btn-cancelar" type="button" class="btn btn-danger" style="display:none;">
-                <i class="bi bi-x-circle me-1"></i>Cancelar
-            </button>
+            <button id="btn-nuevo" type="button" class="btn btn-secondary">Nuevo</button>
+            <button id="btn-guardar" type="button" class="btn btn-success">Guardar</button>
+            <button id="btn-actualizar" type="button" class="btn btn-warning" style="display:none;">Actualizar</button>
+            <button id="btn-cancelar" type="button" class="btn btn-danger" style="display:none;">Cancelar</button>
         </div>
 
-        <h2 class="card-title mb-3 mt-5">
-            <i class="bi bi-list-ul me-2"></i>HISTORIAL DE COMPRAS
-        </h2>
+        <h2 class="card-title mb-3 mt-5">HISTORIAL DE COMPRAS</h2>
         
         <div class="table-responsive mt-3">
             <table class="table table-striped table-bordered" id="tabla-compras">
@@ -378,14 +356,12 @@ $proveedores = obtenerProveedores();
                                     data-proveedor="<?php echo $compra['id_proveedor']; ?>"
                                     data-fecha="<?php echo $compra['fecha_de_compra']; ?>"
                                     data-monto="<?php echo $compra['monto_total_compra']; ?>">
-                                <i class="bi bi-pencil me-1"></i>Editar
+                                Editar
                             </button>
                             <form method="post" style="display:inline;" onsubmit="return confirm('¿Estás seguro de eliminar esta compra?')">
                                 <input type="hidden" name="operacion" value="eliminar">
                                 <input type="hidden" name="id_compra_ingrediente" value="<?php echo $compra['id_compra_ingrediente']; ?>">
-                                <button type="submit" class="btn btn-sm btn-danger btn-action">
-                                    <i class="bi bi-trash me-1"></i>Eliminar
-                                </button>
+                                <button type="submit" class="btn btn-sm btn-danger btn-action">Eliminar</button>
                             </form>
                         </td>
                     </tr>
@@ -412,16 +388,13 @@ $proveedores = obtenerProveedores();
         const idCompraInput = document.getElementById('id_compra_ingrediente');
         const idCompraInputManual = document.getElementById('id_compra_ingrediente_input');
 
-        // Establecer fecha actual por defecto
         document.getElementById('fecha_de_compra').valueAsDate = new Date();
 
-        // Botón Nuevo
         btnNuevo.addEventListener('click', function() {
             limpiarFormulario();
             mostrarBotonesGuardar();
         });
 
-        // Botón Guardar (Crear)
         btnGuardar.addEventListener('click', function() {
             if (validarFormulario()) {
                 operacionInput.value = 'crear';
@@ -429,7 +402,6 @@ $proveedores = obtenerProveedores();
             }
         });
 
-        // Botón Actualizar
         btnActualizar.addEventListener('click', function() {
             if (validarFormulario()) {
                 operacionInput.value = 'actualizar';
@@ -437,13 +409,11 @@ $proveedores = obtenerProveedores();
             }
         });
 
-        // Botón Cancelar
         btnCancelar.addEventListener('click', function() {
             limpiarFormulario();
             mostrarBotonesGuardar();
         });
 
-        // Eventos para botones Editar
         document.querySelectorAll('.editar-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = this.getAttribute('data-id');
@@ -451,7 +421,6 @@ $proveedores = obtenerProveedores();
                 const fecha = this.getAttribute('data-fecha');
                 const monto = this.getAttribute('data-monto');
 
-                // Llenar formulario
                 idCompraInput.value = id;
                 idCompraInputManual.value = id;
                 idCompraInputManual.classList.add('campo-deshabilitado');
@@ -471,7 +440,6 @@ $proveedores = obtenerProveedores();
             idCompraInputManual.classList.remove('campo-deshabilitado');
             idCompraInputManual.disabled = false;
             operacionInput.value = 'crear';
-            // Restablecer fecha actual
             document.getElementById('fecha_de_compra').valueAsDate = new Date();
         }
 
