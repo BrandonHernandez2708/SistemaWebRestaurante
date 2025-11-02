@@ -2,227 +2,279 @@
 session_start();
 require_once '../conexion.php';
 
-// Verificar sesión
 if (!isset($_SESSION['id_usuario'])) {
     header('Location: ../login.php');
     exit();
 }
 
-// -----------------------------------
-// GENERAR PLANILLA MENSUAL
-// -----------------------------------
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['operacion']) && $_POST['operacion'] === 'generar') {
-    generarPlanilla();
+function mes_nombre($m) {
+    $nombres = [1=>'Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    $m = intval($m);
+    return $nombres[$m] ?? $m;
 }
 
-// -----------------------------------
-// FUNCIONES
-// -----------------------------------
 
-function generarPlanilla() {
-    $conn = conectar();
-    $mes = intval($_POST['mes_planilla'] ?? 0);
-    $anio = intval($_POST['anio_planilla'] ?? 0);
-
-    if ($mes <= 0 || $anio <= 0) {
-        $_SESSION['mensaje'] = 'Debe seleccionar mes y año válidos.';
-        $_SESSION['tipo_mensaje'] = 'error';
-        header('Location: Planilla.php');
-        exit();
-    }
-
-    // 1️⃣ Verificar si ya existe planilla para ese período
-    $check = $conn->prepare("SELECT COUNT(*) AS total FROM planilla WHERE mes_planilla=? AND anio_planilla=?");
-    $check->bind_param('ii', $mes, $anio);
-    $check->execute();
-    $total = $check->get_result()->fetch_assoc()['total'] ?? 0;
-    $check->close();
-
-    if ($total > 0) {
-        $_SESSION['mensaje'] = "Ya existe una planilla generada para $mes/$anio.";
-        $_SESSION['tipo_mensaje'] = 'warning';
-        header('Location: Planilla.php');
-        exit();
-    }
-
-    // 2️⃣ Insertar cálculos automáticos
-    $sql = "
-    INSERT INTO planilla (id_empleado, id_puesto, sueldo_base_mes, bonificacion_total, penalizacion_total, igss_descuento, bono_fijo, bono_especial, sueldo_total, mes_planilla, anio_planilla)
-    SELECT 
-        e.id_empleado,
-        p.id_puesto,
-        p.sueldo_base AS sueldo_base_mes,
-        IFNULL(SUM(b.monto_bonificacion), 0) AS bonificacion_total,
-        IFNULL(SUM(pe.descuento_penalizacion), 0) AS penalizacion_total,
-        ROUND(p.sueldo_base * 0.0483, 2) AS igss_descuento,
-        250.00 AS bono_fijo,
-        CASE 
-            WHEN ? = 7 THEN p.sueldo_base   -- Bono 14
-            WHEN ? = 12 THEN p.sueldo_base  -- Aguinaldo
-            ELSE 0.00
-        END AS bono_especial,
-        ROUND(
-            (p.sueldo_base 
-             + IFNULL(SUM(b.monto_bonificacion),0)
-             + 250.00 
-             + CASE WHEN ?=7 OR ?=12 THEN p.sueldo_base ELSE 0 END)
-            - (IFNULL(SUM(pe.descuento_penalizacion),0) + (p.sueldo_base * 0.0483)),
-        2) AS sueldo_total,
-        ? AS mes_planilla,
-        ? AS anio_planilla
-    FROM empleados e
-    INNER JOIN puesto p ON e.id_puesto = p.id_puesto
-    LEFT JOIN bonificaciones b 
-        ON e.id_empleado = b.id_empleado 
-        AND MONTH(b.fecha_bonificacion)=? AND YEAR(b.fecha_bonificacion)=?
-    LEFT JOIN penalizaciones pe 
-        ON e.id_empleado = pe.id_empleado 
-        AND MONTH(pe.fecha_penalizacion)=? AND YEAR(pe.fecha_penalizacion)=?
-    GROUP BY e.id_empleado, p.id_puesto, p.sueldo_base;
-    ";
-
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('iiiiiiiiii', $mes, $mes, $mes, $mes, $mes, $anio, $mes, $anio, $mes, $anio);
-    $stmt->execute();
-
-    $filas = $stmt->affected_rows;
-    $stmt->close();
-    desconectar($conn);
-
-    if ($filas > 0) {
-        $_SESSION['mensaje'] = "Planilla generada exitosamente ($filas empleados).";
-        $_SESSION['tipo_mensaje'] = 'success';
-    } else {
-        $_SESSION['mensaje'] = "No se generó la planilla. Verifique los datos.";
-        $_SESSION['tipo_mensaje'] = 'error';
-    }
-
-    header('Location: Planilla.php');
-    exit();
-}
-
-// -----------------------------------
-// MOSTRAR PLANILLAS EXISTENTES (Resumen histórico)
-// -----------------------------------
+// 1) Cargar histórico de planillas
 $conn = conectar();
-$sql = "
-SELECT 
-    mes_planilla,
-    anio_planilla,
-    DATE(MIN(fecha_generacion)) AS fecha_generacion,
-    COUNT(DISTINCT id_empleado) AS total_empleados,
-    ROUND(SUM(sueldo_total), 2) AS total_pagar
-FROM planilla
-GROUP BY mes_planilla, anio_planilla
-ORDER BY anio_planilla DESC, mes_planilla DESC;
-";
-$result = $conn->query($sql);
+$hist = $conn->query("SELECT id_planilla, mes, anio, fecha_generacion, total_empleados, total_general
+                      FROM planilla ORDER BY anio ASC, mes ASC");
 $planillas = [];
-while ($row = $result->fetch_assoc()) {
-    $planillas[] = $row;
-}
+while ($h = $hist->fetch_assoc()) $planillas[] = $h;
 desconectar($conn);
 
-// ----------------------- HTML -----------------------
+// -------------------------------
+// 2) Acciones: Guardar planilla
+// -------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guardar') {
+  $mes = intval($_POST['mes'] ?? 0);
+  $anio = intval($_POST['anio'] ?? 0);
+
+  if ($mes < 1 || $mes > 12 || $anio < 2000) {
+    $_SESSION['mensaje'] = 'Selecciona un mes y año válidos.';
+    $_SESSION['tipo_mensaje'] = 'error';
+    header('Location: Planilla.php?mes=' . $mes . '&anio=' . $anio);
+    exit();
+  } else {
+        $conn = conectar();
+
+        // ¿Ya existe?
+        $stmt = $conn->prepare("SELECT id_planilla FROM planilla WHERE mes=? AND anio=? LIMIT 1");
+        $stmt->bind_param('ii', $mes, $anio);
+        $stmt->execute();
+        $stmt->bind_result($id_existente);
+        $ya = $stmt->fetch();
+        $stmt->close();
+
+    if ($ya) {
+      $_SESSION['mensaje'] = 'Ya existe una planilla guardada para ' . mes_nombre($mes) . ' ' . $anio . '.';
+      $_SESSION['tipo_mensaje'] = 'warning';
+      desconectar($conn);
+      header('Location: Planilla.php?mes=' . $mes . '&anio=' . $anio);
+      exit();
+    } else {
+      // Calcular planilla general (sin filtros)
+      // Obtenemos bonificaciones y penalizaciones por empleado para el mes/año en una sola consulta
+      $sql = "SELECT 
+            e.id_empleado, p.sueldo_base,
+            250 AS bono_fijo,
+            IFNULL(SUM(b.monto_bonificacion),0) AS bonificacion,
+            IFNULL(pen.penalizacion,0) AS penalizacion,
+            ROUND(p.sueldo_base * 0.0483, 2) AS igss
+          FROM empleados e
+          INNER JOIN puesto p ON e.id_puesto = p.id_puesto
+          LEFT JOIN bonificaciones b
+            ON b.id_empleado = e.id_empleado
+            AND MONTH(b.fecha_bonificacion)=?
+            AND YEAR(b.fecha_bonificacion)=?
+          LEFT JOIN (
+            SELECT id_empleado, SUM(descuento_penalizacion) AS penalizacion
+            FROM penalizaciones
+            WHERE MONTH(fecha_penalizacion)=? AND YEAR(fecha_penalizacion)=?
+            GROUP BY id_empleado
+          ) pen ON pen.id_empleado = e.id_empleado
+          GROUP BY e.id_empleado";
+
+      // Insert head
+      // Usar la fecha de generación introducida por el usuario si viene y es válida (YYYY-MM-DD)
+      $fechaGen = date('Y-m-d');
+      $fechaGenManual = trim($_POST['fecha_generacion_manual'] ?? '');
+      if ($fechaGenManual !== '') {
+        $d = DateTime::createFromFormat('Y-m-d', $fechaGenManual);
+        if ($d && $d->format('Y-m-d') === $fechaGenManual) {
+          $fechaGen = $fechaGenManual;
+        }
+      }
+
+      $insH = $conn->prepare("INSERT INTO planilla (mes, anio, fecha_generacion, total_empleados, total_general)
+                  VALUES (?,?,?,0,0.00)");
+      $insH->bind_param('iis', $mes, $anio, $fechaGen);
+            $insH->execute();
+            $id_planilla = $insH->insert_id;
+            $insH->close();
+
+            // Calcular detalle
+      $st = $conn->prepare($sql);
+      // bind: mes/anio para bonificaciones y mes/anio para penalizaciones
+      $st->bind_param('iiii', $mes, $anio, $mes, $anio);
+            $st->execute();
+            $rs = $st->get_result();
+
+            $total_general = 0; $total_empleados = 0;
+            $insD = $conn->prepare("INSERT INTO detalle_planilla
+                (id_planilla, id_empleado, sueldo_base, bono_fijo, bonificacion, penalizacion, igss, sueldo_total)
+                VALUES (?,?,?,?,?,?,?,?)");
+
+            while ($r = $rs->fetch_assoc()) {
+                $id_emp = intval($r['id_empleado']);
+                $sueldo_base = floatval($r['sueldo_base']);
+                $bono_fijo = floatval($r['bono_fijo']);
+        $bonificacion = floatval($r['bonificacion']);
+        $penalizacion = floatval($r['penalizacion'] ?? 0);
+                $igss = floatval($r['igss']);
+                $sueldo_total = round(($sueldo_base + $bono_fijo + $bonificacion) - ($penalizacion + $igss), 2);
+
+                $insD->bind_param('iidddddd', $id_planilla, $id_emp, $sueldo_base, $bono_fijo, $bonificacion, $penalizacion, $igss, $sueldo_total);
+                $insD->execute();
+                $total_empleados++;
+                $total_general += $sueldo_total;
+            }
+            $insD->close();
+            $st->close();
+
+            // Update totals
+            $up = $conn->prepare("UPDATE planilla SET total_empleados=?, total_general=? WHERE id_planilla=?");
+            $up->bind_param('idi', $total_empleados, $total_general, $id_planilla);
+            $up->execute();
+            $up->close();
+
+      $_SESSION['mensaje'] = 'Planilla general ' . mes_nombre($mes) . ' ' . $anio . ' guardada correctamente.';
+      $_SESSION['tipo_mensaje'] = 'success';
+      desconectar($conn);
+      header('Location: Planilla.php?mes=' . $mes . '&anio=' . $anio);
+      exit();
+        }
+    }
+}
+
+// Valores para selects y guardado: si vienen por GET se usan, sino se toman valores por defecto
+// Valores para selects y guardado: si vienen por GET se usan, sino se toman valores por defecto
+$mes = intval($_GET['mes'] ?? date('n'));
+$anio = intval($_GET['anio'] ?? date('Y'));
+$fecha_filtro = trim($_GET['fecha'] ?? ''); // YYYY-MM-DD opcional
+$filtro_activo = false;
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Gestión de Planillas</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<title>Planillas (con filtros)</title>
 <link rel="stylesheet" href="/SistemaWebRestaurante/css/bootstrap.min.css">
 <link rel="stylesheet" href="/SistemaWebRestaurante/css/diseñoModulos.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
 <header class="mb-4">
-    <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
-        <h1 class="mb-0">Gestión de Planillas</h1>
-        <ul class="nav nav-pills gap-2 mb-0">
-            <li class="nav-item"><a href="../menu_empleados.php" class="nav-link">Regresar al Menú</a></li>
-        </ul>
-    </div>
+  <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
+    <h1 class="mb-0">Gestión de Planillas</h1>
+    <ul class="nav nav-pills gap-2 mb-0">
+      <li class="nav-item">
+        <a href="../menu_empleados.php" class="btn-back" aria-label="Regresar al menú principal">
+          <span class="arrow">←</span><span>Regresar al Menú</span>
+        </a>
+      </li>
+    </ul>
+  </div>
 </header>
 
 <main class="container my-4">
-
 <?php if (isset($_SESSION['mensaje'])): ?>
 <script>
-window.__mensaje = {
-    text: <?php echo json_encode($_SESSION['mensaje']); ?>,
-    tipo: <?php echo json_encode($_SESSION['tipo_mensaje']); ?>
-};
+  window.__mensaje = {text: <?= json_encode($_SESSION['mensaje']) ?>, tipo: <?= json_encode($_SESSION['tipo_mensaje'] ?? 'error') ?>};
 </script>
-<?php unset($_SESSION['mensaje'], $_SESSION['tipo_mensaje']); ?>
-<?php endif; ?>
+<noscript>
+  <div class="alert alert-<?= ($_SESSION['tipo_mensaje'] ?? '') === 'success' ? 'success' : (($_SESSION['tipo_mensaje'] ?? '') === 'warning' ? 'warning' : 'danger') ?>">
+    <?= htmlspecialchars($_SESSION['mensaje']) ?>
+  </div>
+</noscript>
+<?php unset($_SESSION['mensaje'], $_SESSION['tipo_mensaje']); endif; ?>
+
+<section class="card shadow p-4 mb-4">
+  <h2 class="card__title text-primary mb-4">Generar / Visualizar planilla</h2>
+  <form class="row g-3" id="form-buscar" method="get" action="Planilla_Detalle.php">
+    <!-- Opciones de filtrado (Mes/Año vs Fecha exacta) eliminadas según solicitud -->
+
+    <div class="col-md-2" id="col-mes">
+      <label class="form-label">Mes</label>
+      <select class="form-select" name="mes" id="mes_select">
+        <?php for($m=1;$m<=12;$m++): ?>
+          <option value="<?= $m ?>" <?= $m==$mes?'selected':'' ?>><?= mes_nombre($m) ?></option>
+        <?php endfor; ?>
+      </select>
+    </div>
+    <div class="col-md-2" id="col-anio">
+      <label class="form-label">Año</label>
+      <input type="number" class="form-control" name="anio" id="anio_input" min="2000" max="<?= date('Y')+1 ?>" value="<?= htmlspecialchars($anio) ?>">
+    </div>
+    <div class="col-md-3" id="col-fecha" style="display:none;">
+      <label class="form-label">Fecha</label>
+      <input type="date" class="form-control" name="fecha" value="<?= htmlspecialchars($fecha_filtro) ?>">
+    </div>
+    <!-- Sucursal y Departamento eliminados según solicitud -->
+    <!-- Botón "Ver" eliminado (la vista previa se abre desde Planilla_Detalle.php cuando sea necesario) -->
+  </form>
+  <form class="mt-3" id="form-guardar" method="post">
+    <input type="hidden" name="accion" value="guardar">
+    <input type="hidden" name="mes" id="hidden_mes" value="<?= htmlspecialchars($mes) ?>">
+    <input type="hidden" name="anio" id="hidden_anio" value="<?= htmlspecialchars($anio) ?>">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Fecha de generación (la introducirás tú)</label>
+        <input type="date" class="form-control" name="fecha_generacion_manual" id="fecha_generacion_manual" value="<?= date('Y-m-d') ?>" required>
+        <small class="form-text text-muted help-text">Introduce la fecha exacta en que se generó la planilla (ej: 2025-01-31).</small>
+      </div>
+
+      <div class="col-12 mt-3">
+        <div class="d-flex gap-2">
+          <button id="btn-nuevo" type="button" class="btn btn-secondary">Nuevo</button>
+          <button id="btn-guardar" type="submit" class="btn btn-success" data-con-filtro="<?= $filtro_activo ? '1':'0' ?>">Guardar planilla (histórico)</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</section>
+
+<!-- Vista previa movida a Planilla_Detalle.php. Al hacer click en "Ver" se redirige allí con los filtros seleccionados. -->
 
 <section class="card shadow p-4">
-    <h2 class="text-primary mb-3">Generar nueva planilla</h2>
-    <form method="post" id="form-planilla" class="row g-3">
-        <input type="hidden" name="operacion" value="generar">
-        <div class="col-md-4">
-            <label class="form-label">Mes</label>
-            <select name="mes_planilla" id="mes_planilla" class="form-select" required>
-                <option value="">-- Seleccionar mes --</option>
-                <?php 
-                $meses = [
-                    1=>'Enero',2=>'Febrero',3=>'Marzo',4=>'Abril',5=>'Mayo',6=>'Junio',
-                    7=>'Julio',8=>'Agosto',9=>'Septiembre',10=>'Octubre',11=>'Noviembre',12=>'Diciembre'
-                ];
-                foreach ($meses as $num=>$nombre)
-                    echo "<option value='$num'>$nombre</option>";
-                ?>
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Año</label>
-            <input type="number" name="anio_planilla" id="anio_planilla" class="form-control" min="2020" max="2100" required>
-        </div>
-        <div class="col-md-4 d-flex align-items-end">
-            <button type="submit" id="btn-generar" class="btn btn-success w-100">Generar Planilla</button>
-        </div>
-    </form>
+  <h2 class="text-primary mb-3">Histórico de planillas guardadas</h2>
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped">
+      <thead class="table-dark">
+        <tr>
+          <th>Año</th>
+          <th>Mes</th>
+          <th>Fecha de Generación</th>
+          <th>Total Empleados</th>
+          <th>Total a Pagar</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php if (!empty($planillas)): ?>
+          <?php foreach ($planillas as $pl): ?>
+            <tr>
+              <td><?= $pl['anio'] ?></td>
+              <td><?= mes_nombre($pl['mes']) ?></td>
+              <td><?= $pl['fecha_generacion'] ?></td>
+              <td><?= $pl['total_empleados'] ?></td>
+              <td>Q <?= number_format($pl['total_general'],2) ?></td>
+              <td>
+                <a class="btn btn-primary btn-sm"
+                   href="Planilla_Detalle.php?id_planilla=<?= $pl['id_planilla'] ?>">Ver Detalle</a>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <tr><td colspan="6" class="text-center">Aún no hay planillas guardadas.</td></tr>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
 </section>
-
-<section class="card shadow p-4 mt-5">
-    <h3 class="text-primary mb-3">Histórico de planillas generadas</h3>
-    <div class="table-responsive">
-        <table class="table table-bordered table-striped">
-            <thead class="table-dark">
-                <tr>
-                    <th>Mes</th>
-                    <th>Año</th>
-                    <th>Fecha de Generación</th>
-                    <th>Total Empleados</th>
-                    <th>Total a Pagar</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (!empty($planillas)): ?>
-                    <?php foreach ($planillas as $pl): ?>
-                        <tr>
-                            <td><?= $meses[$pl['mes_planilla']]; ?></td>
-                            <td><?= $pl['anio_planilla']; ?></td>
-                            <td><?= $pl['fecha_generacion']; ?></td>
-                            <td><?= $pl['total_empleados']; ?></td>
-                            <td>Q <?= number_format($pl['total_pagar'],2); ?></td>
-                            <td>
-                                <a href="Planilla_Detalle.php?mes=<?= $pl['mes_planilla']; ?>&anio=<?= $pl['anio_planilla']; ?>" 
-                                   class="btn btn-primary btn-sm">Ver Detalle</a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr><td colspan="6" class="text-center">No hay planillas generadas</td></tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
-</section>
-
 </main>
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="/SistemaWebRestaurante/javascript/Planilla.js"></script>
+<script>
+  (function(){
+    const m = window.__mensaje;
+    if (!m) return;
+    Swal.fire({
+      icon: m.tipo==='success'?'success':(m.tipo==='warning'?'warning':'error'),
+      title: m.tipo==='success'?'Éxito':(m.tipo==='warning'?'Atención':'Error'),
+      text: m.text
+    });
+  })();
+  </script>
 </body>
 </html>

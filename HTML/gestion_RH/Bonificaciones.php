@@ -54,7 +54,7 @@ function crearBonificacion() {
         exit();
     }
 
-    $total = $horas * $pago;
+    // NOTA: 'monto_bonificacion' es una columna generada en la BD; no se debe asignar explícitamente.
     $sql = "INSERT INTO bonificaciones (id_empleado, fecha_bonificacion, horas_extras, pago_por_hora)
         VALUES (?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
@@ -77,7 +77,6 @@ function actualizarBonificacion() {
     $fecha = $_POST['fecha_bonificacion'] ?? '';
     $horas = floatval($_POST['horas_extras'] ?? 0);
     $pago = floatval($_POST['pago_por_hora'] ?? 0.00);
-    $total = $horas * $pago;
 
     if ($id_bonificacion === '' || $id_empleado === '' || $fecha === '' || $horas <= 0 || $pago <= 0) {
         $_SESSION['mensaje'] = 'Debe llenar todos los campos correctamente.';
@@ -86,6 +85,7 @@ function actualizarBonificacion() {
         exit();
     }
 
+    // 'monto_bonificacion' es generado; sólo actualizamos las columnas base
     $sql = "UPDATE bonificaciones 
         SET id_empleado=?, fecha_bonificacion=?, horas_extras=?, pago_por_hora=? 
         WHERE id_bonificacion=?";
