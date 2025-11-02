@@ -159,7 +159,7 @@ $proveedores = obtenerProveedores();
 
     <!-- EXPORTAR -->
     <div class="export-buttons">
-      <a href="exportar_excel_compras_insumos.php?<?= http_build_query($_GET); ?>" class="btn-export">
+      <a href="Exportar_Compras_insumos.php?<?= http_build_query($_GET); ?>" class="btn-export">
         <i class="bi bi-file-earmark-excel-fill"></i> Exportar Excel
       </a>
     </div>

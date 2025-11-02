@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
-
+require_once __DIR__ . '/../funciones_globales.php';
 // --- Verificar sesión ---
 if (!isset($_SESSION['id_usuario'])) {
     header('Location: ../login.php');
@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // --- Funciones CRUD ---
 function crearInsumo(): void {
     $conn = conectar();
+
     $insumo = trim($_POST['insumo'] ?? '');
     $descripcion = trim($_POST['descripcion'] ?? '');
     $stock = (int)($_POST['stock'] ?? 0);
@@ -31,8 +32,13 @@ function crearInsumo(): void {
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ssi", $insumo, $descripcion, $stock);
 
-    // pasar $conn para que ejecutarConsulta pueda desconectar correctamente
-    ejecutarConsulta($conn, $stmt, "Insumo creado exitosamente", "Error al crear insumo");
+    // callback para bitácora
+    $onSuccess = function(mysqli $cx) use ($insumo, $descripcion, $stock) {
+        $idNew = $cx->insert_id;
+        registrarBitacora($cx, "inventario_insumos", "insertar", "ID $idNew - '$insumo' creado (Stock $stock)");
+    };
+
+    ejecutarConsulta($conn, $stmt, "Insumo creado exitosamente", "Error al crear insumo", $onSuccess);
 }
 
 function actualizarInsumo(): void {
@@ -46,23 +52,55 @@ function actualizarInsumo(): void {
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ssii", $insumo, $descripcion, $stock, $id);
 
-    ejecutarConsulta($conn, $stmt, "Insumo actualizado exitosamente", "Error al actualizar insumo");
+    // callback para bitácora
+    $onSuccess = function(mysqli $cx) use ($id, $insumo, $stock) {
+        registrarBitacora($cx, "inventario_insumos", "actualizar", "ID $id - '$insumo' (Stock $stock)");
+    };
+
+    ejecutarConsulta($conn, $stmt, "Insumo actualizado exitosamente", "Error al actualizar insumo", $onSuccess);
 }
 
 function eliminarInsumo(): void {
     $conn = conectar();
     $id = (int)($_POST['id_insumo'] ?? 0);
 
+    // leer datos antes de eliminar (para registrar detalle)
+    $nombrePrev = '';
+    $stockPrev = 0;
+    if ($id > 0) {
+        if ($sel = $conn->prepare("SELECT insumo, stock FROM inventario_insumos WHERE id_insumo = ?")) {
+            $sel->bind_param("i", $id);
+            $sel->execute();
+            $res = $sel->get_result();
+            if ($res && $row = $res->fetch_assoc()) {
+                $nombrePrev = (string)$row['insumo'];
+                $stockPrev = (int)$row['stock'];
+            }
+            $sel->close();
+        }
+    }
+
     $sql = "DELETE FROM inventario_insumos WHERE id_insumo = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $id);
 
-    ejecutarConsulta($conn, $stmt, "Insumo eliminado exitosamente", "Error al eliminar insumo");
+    // callback para bitácora
+    $onSuccess = function(mysqli $cx) use ($id, $nombrePrev, $stockPrev) {
+        $detalle = $nombrePrev !== '' ? "ID $id - '$nombrePrev' (Stock $stockPrev)" : "ID $id";
+        registrarBitacora($cx, "inventario_insumos", "eliminar", $detalle);
+    };
+
+    ejecutarConsulta($conn, $stmt, "Insumo eliminado exitosamente", "Error al eliminar insumo", $onSuccess);
 }
 
-function ejecutarConsulta(mysqli $conn, mysqli_stmt $stmt, string $msgExito, string $msgError): void {
+// ejecutarConsulta ahora recibe un callback opcional $onSuccess
+function ejecutarConsulta(mysqli $conn, mysqli_stmt $stmt, string $msgExito, string $msgError, ?callable $onSuccess = null): void {
     try {
         if ($stmt->execute()) {
+            // ejecutar callback de éxito antes de cerrar/redirigir
+            if (is_callable($onSuccess)) {
+                try { $onSuccess($conn); } catch (\Throwable $t) { /* no detener flujo */ }
+            }
             $_SESSION['mensaje'] = $msgExito;
             $_SESSION['tipo_mensaje'] = "success";
         } else {
@@ -70,7 +108,6 @@ function ejecutarConsulta(mysqli $conn, mysqli_stmt $stmt, string $msgExito, str
             $_SESSION['tipo_mensaje'] = "error";
         }
     } catch (mysqli_sql_exception $e) {
-        // Código 1451 = Cannot delete or update a parent row: a foreign key constraint fails
         if ((int)$e->getCode() === 1451) {
             $_SESSION['mensaje'] = "No se puede eliminar: el registro está vinculado en detalle_compra_insumo.";
             $_SESSION['tipo_mensaje'] = "error";
@@ -79,7 +116,6 @@ function ejecutarConsulta(mysqli $conn, mysqli_stmt $stmt, string $msgExito, str
             $_SESSION['tipo_mensaje'] = "error";
         }
     } finally {
-        // cerrar statement si existe y la conexión
         try { if ($stmt) $stmt->close(); } catch (\Throwable $ignore) {}
         try { desconectar($conn); } catch (\Throwable $ignore) {}
         header('Location: gestion_insumos.php');
@@ -119,7 +155,7 @@ $insumos = obtenerInsumos();
 <header class="mb-4">
     <div class="container d-flex justify-content-between align-items-center py-3">
         <h1 class="mb-0">GESTIÓN DE INSUMOS</h1>
-        <a href="../menu_empleados.php" class="btn btn-outline-dark">Regresar</a>
+        <a href="../menu_empleados.php" class="btn-back"><span class="arrow">←</span> Regresar</a>
     </div>
 </header>
 

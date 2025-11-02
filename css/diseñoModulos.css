@@ -178,21 +178,21 @@ small.form-text.help-text.visible {
     padding: .75rem 1.25rem;
     font-weight: 700;
     color: #fff !important;
-    background: linear-gradient(135deg, #3D7CFF 0%, #2BBEFF 100%);
-    border: 2px solid rgba(255,255,255,.55);
+    background: linear-gradient(135deg, #000000 0%, #222222 100%);
+    border: 2px solid #000;
     border-radius: 14px;
     text-decoration: none !important;
-    box-shadow: 0 6px 16px rgba(45,105,255,.22);
+    box-shadow: 0 6px 16px rgba(0,0,0,.35);
     transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
 }
 .btn-back:hover {
     transform: translateY(-1px);
-    box-shadow: 0 10px 24px rgba(45,105,255,.32);
-    filter: brightness(1.03);
+    box-shadow: 0 10px 24px rgba(0,0,0,.45);
+    filter: brightness(1.02);
 }
 .btn-back:active {
     transform: translateY(0);
-    box-shadow: 0 4px 12px rgba(45,105,255,.24);
-    }
+    box-shadow: 0 4px 12px rgba(0,0,0,.35);
+}
 .btn-back .arrow { font-size: 1.1rem; line-height: 1; 
 }

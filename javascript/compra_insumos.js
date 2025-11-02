@@ -34,11 +34,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const tdCant = document.createElement('td');
         const inpCant = document.createElement('input');
         inpCant.type = 'number';
-        inpCant.step = '0.001';
-        inpCant.min = '0.001';
+        // solo enteros
+        inpCant.step = '1';
+        inpCant.min = '1';
         inpCant.name = 'cantidad[]';
         inpCant.className = 'form-control form-control-sm';
-        inpCant.value = defaults.cantidad ?? '1';
+        inpCant.value = defaults.cantidad ? parseInt(defaults.cantidad, 10) : 1;
         inpCant.required = true;
         tdCant.appendChild(inpCant);
         tr.appendChild(tdCant);
@@ -71,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // listeners para calcular subtotal
         function calc() {
-            const q = parseFloat(inpCant.value || 0);
+            const q = parseInt(inpCant.value || 0, 10);
             const p = parseFloat(inpPrecio.value || 0);
             const sub = (!isNaN(q) && !isNaN(p)) ? (q * p) : 0;
             tdSub.textContent = sub.toFixed(2);
@@ -129,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function () {
             for (let i = 0; i < filas.length; i++) {
                 const tr = filas[i];
                 const sel = tr.querySelector('select[name="insumo_id[]"]');
-                const cant = parseFloat((tr.querySelector('input[name="cantidad[]"]').value || '0'));
+                const cant = parseInt((tr.querySelector('input[name="cantidad[]"]').value || '0'), 10);
                 const precio = parseFloat((tr.querySelector('input[name="precio_unitario[]"]').value || '0'));
                 if (!sel || !sel.value) {
                     evt.preventDefault();
