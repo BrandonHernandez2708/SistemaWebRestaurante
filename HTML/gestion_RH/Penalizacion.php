@@ -1,3 +1,4 @@
+<!--Ernesto David Samayoa Jocol 0901-22-3415-->
 <?php
 session_start();
 require_once '../conexion.php';
@@ -25,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ---------------------- FUNCIONES CRUD ----------------------
-
 function crearPenalizacion() {
     $conn = conectar();
     $id_empleado = $_POST['id_empleado'] ?? '';
@@ -150,7 +150,7 @@ desconectar($conn);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Penalizaciones</title>
+    <title>Penalizaciones</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/SistemaWebRestaurante/css/bootstrap.min.css">
     <link rel="stylesheet" href="/SistemaWebRestaurante/css/diseñoModulos.css">
@@ -158,9 +158,13 @@ desconectar($conn);
 <body>
 <header class="mb-4">
     <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
-        <h1 class="mb-0">Gestión de Penalizaciones</h1>
+        <h1 class="mb-0">Recursos Humanos RH</h1>
         <ul class="nav nav-pills gap-2 mb-0">
-            <li class="nav-item"><a href="../menu_empleados.php" class="nav-link">Regresar al Menú</a></li>
+            <li class="nav-item">
+                <a href="../menu_empleados.php" class="btn-back" aria-label="Regresar al menú principal">
+                    <span class="arrow">←</span><span>Regresar al Menú</span>
+                </a>
+            </li>
         </ul>
     </div>
 </header>
@@ -184,7 +188,7 @@ desconectar($conn);
             <input type="hidden" name="id_penalizacion" id="id_penalizacion">
 
             <div class="col-md-4">
-                <label class="form-label">Empleado</label>
+                <label class="form-label"> 👤Empleado</label>
                 <select class="form-select" name="id_empleado" id="id_empleado" required>
                     <option value="">-- Seleccione empleado --</option>
                     <?php foreach ($empleados_map as $id => $nombre): ?>
@@ -194,17 +198,17 @@ desconectar($conn);
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Fecha Penalización</label>
+                <label class="form-label"> 🗓️Fecha Penalización</label>
                 <input type="date" class="form-control" name="fecha_penalizacion" id="fecha_penalizacion" required>
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Descuento (Q)</label>
+                <label class="form-label">💰Descuento (Q)</label>
                 <input type="number" step="0.01" min="0" class="form-control" name="descuento_penalizacion" id="descuento_penalizacion" required>
             </div>
 
             <div class="col-md-12">
-                <label class="form-label">Descripción</label>
+                <label class="form-label"> 📝Descripción</label>
                 <textarea class="form-control" name="descripcion_penalizacion" id="descripcion_penalizacion" rows="2" required></textarea>
             </div>
 

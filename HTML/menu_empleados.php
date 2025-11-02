@@ -53,7 +53,8 @@
                     <li><a href="gestion_RH/Puestos.php">Puestos de trabajo</a></li>
                     <li><a href="gestion_RH/Asistencias.php">Asistencias de Empleados</a></li>
                     <li><a href="gestion_RH/Penalizacion.php">Penalizaciones de Empleados</a></li>
-                    <li><a href="gestion_RH/Empleados_Sucursal.php">Asignaciones de Sucursal</a></li>
+                    <li><a href="gestion_RH/Bonificaciones.php">Bonificaciones de Empleados</a></li>
+                    <li><a href="gestion_RH/Planilla.php">Planilla</a></li>
                 </ul>
             </li>
 
@@ -61,6 +62,7 @@
                 <a href="#" class="submenu-toggle"><span>📍</span> Gestión Departamental</a>
                 <ul class="submenu">
                     <li><a href="Departamental/Sucursales.php">Sucursales</a></li>
+                    <li><a href="Departamental/Empleados_Sucursal.php">Asignaciones de Empleados a Sucursales</a></li>
                 </ul>
             </li>
 

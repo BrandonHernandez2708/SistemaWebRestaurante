@@ -39,7 +39,7 @@ function crearTelefono() {
         exit();
     }
 
-    // Validar formato de número telefónico (solo dígitos, +, -, espacios permitidos)
+    // Validar formato de número telefónico (solo dígitos, y - espacios permitidos)
     if (!preg_match('/^[0-9+\-\s]{7,20}$/', $numero_telefono)) {
         $_SESSION['mensaje'] = 'El número de teléfono no es válido.';
         $_SESSION['tipo_mensaje'] = 'error';
@@ -123,8 +123,7 @@ function eliminarTelefono() {
 
 function obtenerTelefonos() {
     $conn = conectar();
-    // Ordenar primero por id_empleado (asc) y luego por id_telefono para mantener
-    // el orden lógico por empleado conforme se agregan los registros.
+    // Ordenar primero por id_empleado (asc) y luego por id_telefono para mantener el orden lógico por empleado conforme se agregan los registros.
     $sql = "SELECT t.id_telefono, t.numero_telefono, t.id_empleado, 
              e.nombre_empleado, e.apellido_empleado
          FROM telefono_empleados t
@@ -163,9 +162,14 @@ desconectar($conn);
 <body>
 <header class="mb-4">
     <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
-        <h1 class="mb-0">Gestión de Teléfonos de Empleados</h1>
+        <h1 class="mb-0">Gestión de Empleados</h1>
         <ul class="nav nav-pills gap-2 mb-0">
-            <li class="nav-item"><a href="../menu_empleados.php" class="nav-link">Regresar al Menú</a></li>
+            <li class="nav-item">
+                <a href="../menu_empleados.php" class="btn-back" aria-label="Regresar al menú principal">
+                    <span class="arrow">←</span>
+                    <span>Regresar al Menú</span>
+                </a>
+            </li>
         </ul>
     </div>
 </header>
@@ -182,7 +186,7 @@ desconectar($conn);
     <?php endif; ?>
 
     <section class="card shadow p-4">
-        <h2 class="text-primary mb-4">Formulario Teléfono Empleado</h2>
+        <h2 class="text-primary mb-4">Formulario Teléfono de Empleados</h2>
 
         <form id="form-telefono" method="post" class="row g-3">
             <input type="hidden" name="operacion" id="operacion" value="crear">

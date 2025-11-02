@@ -1,4 +1,5 @@
 // GestionMobiliario.js — gestión de formulario de mobiliario con SweetAlert2
+// CON VALIDACIONES MEJORADAS IMPLEMENTADAS
 
 document.addEventListener('DOMContentLoaded', function () {
     // Elementos
@@ -11,13 +12,101 @@ document.addEventListener('DOMContentLoaded', function () {
     const operacionInput = document.getElementById('operacion');
     const idMobiliarioInput = document.getElementById('id_mobiliario');
 
+    // Función para sanitizar inputs y prevenir XSS
+    function sanitizarInput(input) {
+        if (!input) return '';
+        return input.toString().trim().replace(/[<>&"']/g, '');
+    }
+
+    // Función para validar nombre del mobiliario
+    function validarNombreMobiliario(nombre) {
+        const nombreRegex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\_\.\(\)]+$/;
+        return nombre.length >= 2 && nombre.length <= 100 && nombreRegex.test(nombre);
+    }
+
+    // Función para validar descripción
+    function validarDescripcion(descripcion) {
+        if (!descripcion) return true; // Descripción es opcional
+        const descripcionRegex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\_\.\(\)\,\;\:\!\?]+$/;
+        return descripcion.length <= 500 && descripcionRegex.test(descripcion);
+    }
+
+    // Validación de nombre del mobiliario en tiempo real
+    const nombreInput = document.getElementById('nombre_mobiliario');
+    if (nombreInput) {
+        nombreInput.addEventListener('input', function () {
+            const valor = this.value.trim();
+            if (valor.length > 100) {
+                this.value = valor.substring(0, 100);
+                showWarning('El nombre no puede exceder los 100 caracteres');
+            }
+        });
+
+        nombreInput.addEventListener('blur', function() {
+            const valor = this.value.trim();
+            if (valor && !validarNombreMobiliario(valor)) {
+                showWarning('El nombre contiene caracteres no permitidos. Solo se permiten letras, números, espacios y los caracteres: - _ . ( )');
+                this.focus();
+            }
+        });
+    }
+
+    // Validación de descripción en tiempo real
+    const descripcionInput = document.getElementById('descripcion');
+    if (descripcionInput) {
+        descripcionInput.addEventListener('input', function () {
+            const valor = this.value;
+            if (valor.length > 500) {
+                this.value = valor.substring(0, 500);
+                showWarning('La descripción no puede exceder los 500 caracteres');
+            }
+        });
+
+        descripcionInput.addEventListener('blur', function() {
+            const valor = this.value.trim();
+            if (valor && !validarDescripcion(valor)) {
+                showWarning('La descripción contiene caracteres no permitidos. Solo se permiten letras, números, espacios y los caracteres: - _ . ( ) , ; : ! ?');
+                this.focus();
+            }
+        });
+    }
+
     // Validación de cantidad
     const cantidadInput = document.getElementById('cantidad_en_stock');
     if (cantidadInput) {
         cantidadInput.addEventListener('input', function () {
-            // Asegurar que el valor sea positivo
-            if (this.value < 0) {
-                this.value = 0;
+            let value = this.value.replace(/[^0-9]/g, '');
+            
+            // Asegurar que el valor sea positivo y dentro de límites
+            if (value < 0) {
+                value = 0;
+            } else if (value > 100000) {
+                value = 100000;
+                showWarning('La cantidad no puede ser mayor a 100,000 unidades');
+            }
+            
+            this.value = value;
+        });
+
+        cantidadInput.addEventListener('blur', function() {
+            if (this.value && !isNaN(parseInt(this.value))) {
+                const valor = parseInt(this.value);
+                if (valor < 0) {
+                    this.value = 0;
+                } else if (valor > 100000) {
+                    this.value = 100000;
+                }
+            }
+        });
+    }
+
+    // Validación de selección de tipo
+    const tipoSelect = document.getElementById('id_tipo_mobiliario');
+    if (tipoSelect) {
+        tipoSelect.addEventListener('change', function() {
+            if (this.value && !/^\d+$/.test(this.value)) {
+                showWarning('Seleccione un tipo de mobiliario válido');
+                this.value = '';
             }
         });
     }
@@ -30,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (btnGuardar) btnGuardar.addEventListener('click', function () {
         if (!form) return console.warn('Formulario no encontrado');
-        if (validarFormulario()) {
+        if (validarFormularioCompleto()) {
             const doSubmit = () => {
                 if (operacionInput) operacionInput.value = 'crear';
                 form.submit();
@@ -57,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (btnActualizar) btnActualizar.addEventListener('click', function () {
         if (!form) return console.warn('Formulario no encontrado');
-        if (validarFormulario()) {
+        if (validarFormularioCompleto()) {
             const doSubmit = () => {
                 if (operacionInput) operacionInput.value = 'actualizar';
                 form.submit();
@@ -110,20 +199,25 @@ document.addEventListener('DOMContentLoaded', function () {
     // Editar desde la tabla
     document.querySelectorAll('.editar-btn').forEach(btn => {
         btn.addEventListener('click', function () {
-            const id = this.getAttribute('data-id');
-            const nombre = this.getAttribute('data-nombre');
-            const tipo = this.getAttribute('data-tipo');
-            const descripcion = this.getAttribute('data-descripcion');
-            const cantidad = this.getAttribute('data-cantidad');
+            const id = sanitizarInput(this.getAttribute('data-id'));
+            const nombre = sanitizarInput(this.getAttribute('data-nombre'));
+            const tipo = sanitizarInput(this.getAttribute('data-tipo'));
+            const descripcion = sanitizarInput(this.getAttribute('data-descripcion'));
+            const cantidad = sanitizarInput(this.getAttribute('data-cantidad'));
 
             const doFill = () => {
                 if (idMobiliarioInput) idMobiliarioInput.value = id || '';
+                
+                // Sanitizar y establecer valores
                 document.getElementById('nombre_mobiliario').value = nombre || '';
                 document.getElementById('id_tipo_mobiliario').value = tipo || '';
                 document.getElementById('descripcion').value = descripcion || '';
                 document.getElementById('cantidad_en_stock').value = cantidad || '0';
 
                 mostrarBotonesActualizar();
+                
+                // Scroll al formulario
+                form.scrollIntoView({ behavior: 'smooth' });
             };
 
             if (typeof Swal !== 'undefined') {
@@ -181,38 +275,73 @@ document.addEventListener('DOMContentLoaded', function () {
         if (btnCancelar) btnCancelar.style.display = 'inline-block';
     }
 
-    function validarFormulario() {
+    // FUNCIÓN DE VALIDACIÓN COMPLETA DEL FORMULARIO
+    function validarFormularioCompleto() {
         const nombre = document.getElementById('nombre_mobiliario').value.trim();
         const tipo = document.getElementById('id_tipo_mobiliario').value;
         const cantidad = document.getElementById('cantidad_en_stock').value;
+        const descripcion = document.getElementById('descripcion').value.trim();
 
         const showWarning = (msg) => {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({ 
                     icon: 'warning', 
-                    title: 'Campo requerido', 
+                    title: 'Validación', 
                     text: msg,
                     confirmButtonColor: '#ffc107'
                 });
             } else {
                 alert(msg);
             }
+            return false;
         };
 
+        // Validar nombre
         if (!nombre) { 
-            showWarning('El nombre del mobiliario es requerido'); 
-            document.getElementById('nombre_mobiliario').focus(); 
-            return false; 
+            return showWarning('El nombre del mobiliario es requerido'); 
         }
+        
+        if (nombre.length < 2) {
+            return showWarning('El nombre del mobiliario debe tener al menos 2 caracteres');
+        }
+        
+        if (nombre.length > 100) {
+            return showWarning('El nombre del mobiliario no puede exceder los 100 caracteres');
+        }
+        
+        if (!validarNombreMobiliario(nombre)) {
+            return showWarning('El nombre contiene caracteres no permitidos. Solo se permiten letras, números, espacios y los caracteres: - _ . ( )');
+        }
+
+        // Validar tipo
         if (!tipo) { 
-            showWarning('El tipo de mobiliario es requerido'); 
-            document.getElementById('id_tipo_mobiliario').focus(); 
-            return false; 
+            return showWarning('El tipo de mobiliario es requerido'); 
         }
-        if (!cantidad || cantidad < 0) { 
-            showWarning('La cantidad debe ser mayor o igual a 0'); 
-            document.getElementById('cantidad_en_stock').focus(); 
-            return false; 
+        if (!/^\d+$/.test(tipo)) {
+            return showWarning('El ID del tipo de mobiliario debe ser un número válido');
+        }
+
+        // Validar cantidad
+        if (!cantidad) { 
+            return showWarning('La cantidad en stock es requerida'); 
+        }
+        
+        const cantidadNum = parseInt(cantidad);
+        if (isNaN(cantidadNum)) {
+            return showWarning('La cantidad en stock debe ser un número válido');
+        }
+        
+        if (cantidadNum < 0) {
+            return showWarning('La cantidad en stock no puede ser negativa');
+        }
+        
+        if (cantidadNum > 100000) {
+            return showWarning('La cantidad en stock no puede ser mayor a 100,000 unidades');
+        }
+
+        // Validar descripción (opcional)
+        if (descripcion && !validarDescripcion(descripcion)) {
+            return showWarning('La descripción contiene caracteres no permitidos o excede el límite de 500 caracteres');
         }
 
         return true;
@@ -223,18 +352,20 @@ document.addEventListener('DOMContentLoaded', function () {
         f.addEventListener('submit', function(evt) {
             evt.preventDefault();
             const frm = this;
+            const idMobiliario = this.querySelector('input[name="id_mobiliario"]').value;
             
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     title: '¿Eliminar mobiliario?',
-                    text: 'Esta acción no se puede deshacer. El mobiliario será eliminado permanentemente del inventario.',
+                    html: `¿Estás seguro de que deseas eliminar este mobiliario del inventario?<br><br>
+                          <span class="text-danger">⚠️ Esta acción no se puede deshacer.</span>`,
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Sí, eliminar',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#dc3545',
                     cancelButtonColor: '#6c757d',
-                    dangerMode: true
+                    focusCancel: true
                 }).then((result) => {
                     if (result.isConfirmed) {
                         frm.submit();
@@ -270,4 +401,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Inicializar estado del formulario
     limpiarFormulario();
+
+    // Prevenir envío de formulario con Enter en campos individuales
+    if (form) {
+        form.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const target = e.target;
+                if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+    }
 });

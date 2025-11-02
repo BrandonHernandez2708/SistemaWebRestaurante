@@ -1,3 +1,4 @@
+<!--Ernesto David Samayoa Jocol 0901-22-3415-->
 <?php
 session_start();
 require_once '../conexion.php';
@@ -25,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ---------------------- FUNCIONES CRUD ----------------------
-
 function crearCorreo() {
     $conn = conectar();
     $id_empleado = $_POST['id_empleado'] ?? '';
@@ -117,8 +117,7 @@ function eliminarCorreo() {
 
 function obtenerCorreos() {
     $conn = conectar();
-    // Ordenar por id_empleado asc y luego por id_correo asc para que al agrupar
-    // los empleados aparezcan en orden numérico (1,2,3...) y sus correos en orden de inserción.
+    // Ordenar por id_empleado asc y luego por id_correo asc para que al agrupar los empleados aparezcan en orden numérico y sus correos en orden de inserción.
     $sql = "SELECT c.id_correo, c.direccion_correo, c.id_empleado,
              e.nombre_empleado, e.apellido_empleado
          FROM correos_empleado c
@@ -157,9 +156,13 @@ desconectar($conn);
 <body>
 <header class="mb-4">
     <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
-        <h1 class="mb-0">Gestión de Correos de Empleados</h1>
+        <h1 class="mb-0">Gestión de Empleados</h1>
         <ul class="nav nav-pills gap-2 mb-0">
-            <li class="nav-item"><a href="../menu_empleados.php" class="nav-link">Regresar al Menú</a></li>
+            <li class="nav-item">
+                <a href="../menu_empleados.php" class="btn-back" aria-label="Regresar al menú principal">
+                    <span class="arrow">←</span><span>Regresar al Menú</span>
+                </a>
+            </li>
         </ul>
     </div>
 </header>
