@@ -168,3 +168,30 @@ small.form-text.help-text {
 small.form-text.help-text.visible {
     display: block !important;
 }
+
+/* botones dorados */
+.btn-dorado {
+  background-color: #c9a227;       
+  color: #1c1c1c;                 
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  text-decoration: none;
+}
+
+.btn-dorado:hover {
+  background-color: #f0c13e;       
+  color: #000;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  text-decoration: none;
+}
+
+.btn-dorado:active {
+  background-color: #b58f1f;
+  transform: scale(0.98);
+}
+
