@@ -1,4 +1,4 @@
-<!--Ernesto David Samayoa Jocol 0901-22-3415 version2610-->
+<!--Ernesto David Samayoa Jocol 0901-22-3415-->
 <?php
 session_start();
 require_once '../conexion.php';
@@ -63,7 +63,7 @@ function crearEmpleado() {
         exit();
     }
 
-    // Normalizar DPI: conservar sólo dígitos
+    // Normalizar DPI: conservar sólo 13 dígitos
     $dpi_digits = preg_replace('/\D/', '', $dpi);
     if (strlen($dpi_digits) !== 13) {
         $_SESSION['mensaje'] = 'El DPI debe contener 13 dígitos';
@@ -76,7 +76,7 @@ function crearEmpleado() {
 
     
 
-    // Verificar unicidad del DPI
+    // Verificar DPI ya esta registrado
     $check = $conn->prepare("SELECT id_empleado FROM empleados WHERE dpi = ? LIMIT 1");
     $check->bind_param('s', $dpi);
     $check->execute();
@@ -255,9 +255,8 @@ function eliminarEmpleado() {
             $_SESSION['tipo_mensaje'] = 'error';
         }
     } catch (Exception $e) {
-        // En caso de error revertimos la transacción
+        // Mensaje de que el empleado no se puede eliminar por dependencias
         try { $conn->rollback(); } catch (Exception $e2) {}
-        // Mensaje simple y claro (sin detalles técnicos)
         $_SESSION['mensaje'] = 'No se puede eliminar el empleado porque tiene información relacionada con otros datos.';
         $_SESSION['tipo_mensaje'] = 'warning';
     }
@@ -309,7 +308,7 @@ function format_dpi($dpi) {
 
 // Formatear y validar nombres/apellidos en servidor
 function normalize_name($s) {
-    // eliminar caracteres no permitidos (permitir letras latinas con tildes, Ñ y espacios)
+    // eliminar caracteres no permitidos (permitir letras con tildes, Ñ y espacios)
     $s = isset($s) ? (string)$s : '';
     // quitar todo lo que no sea letra o espacio
     $s = preg_replace('/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/u', '', $s);
@@ -325,7 +324,6 @@ function normalize_name($s) {
         if ($s === strtoupper($s)) return $s;
     }
 
-    // Intentar Title Case con mb_convert_case si está disponible
     if (function_exists('mb_convert_case')) {
         return mb_convert_case($s, MB_CASE_TITLE, 'UTF-8');
     }
@@ -354,17 +352,22 @@ function is_valid_name($s) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Empleados</title>
+    <title>Empleados</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/SistemaWebRestaurante/css/bootstrap.min.css">
     <link rel="stylesheet" href="/SistemaWebRestaurante/css/diseñoModulos.css">
+
 </head>
 <body>
 <header class="mb-4">
     <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
         <h1 class="mb-0">Gestión de Empleados</h1>
         <ul class="nav nav-pills gap-2 mb-0">
-            <li class="nav-item"><a href="../menu_empleados.php" class="nav-link">Regresar al Menú</a></li>
+            <li class="nav-item">
+                <a href="../menu_empleados.php" class="btn-back" aria-label="Regresar al menú principal">
+                    <span class="arrow">←</span><span>Regresar al Menú</span>
+                </a>
+            </li>
         </ul>
     </div>
 </header>

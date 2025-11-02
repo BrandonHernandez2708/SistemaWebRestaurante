@@ -1,3 +1,4 @@
+<!--Ernesto David Samayoa Jocol 0901-22-3415-->
 <?php
 session_start();
 require_once '../conexion.php';
@@ -25,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ---------------------- FUNCIONES CRUD ----------------------
-
 function crearContacto() {
     $conn = conectar();
     $nombre = trim($_POST['nombre_contacto'] ?? '');
@@ -40,7 +40,7 @@ function crearContacto() {
         header('Location: Contacto_emergencias.php');
         exit();
     }
-    // Normalizar y validar nombre usando la misma lógica que en Empleados/Puestos
+
     $nombre = normalize_name($nombre);
     if (!is_valid_name($nombre) || mb_strlen($nombre) < 2 || mb_strlen($nombre) > 60) {
         $_SESSION['mensaje'] = 'El nombre del contacto sólo debe contener letras y espacios (2-60 caracteres).';
@@ -48,7 +48,7 @@ function crearContacto() {
         header('Location: Contacto_emergencias.php');
         exit();
     }
-    // Normalizar y validar relación (opcional) usando misma lógica que nombres
+
     if ($relacion !== '') {
         $relacion = normalize_name($relacion);
         if (!is_valid_name($relacion) || mb_strlen($relacion) < 2 || mb_strlen($relacion) > 40) {
@@ -59,7 +59,7 @@ function crearContacto() {
         }
     }
 
-    // Validar teléfono (opcional) formato 0000-0000 o vacío
+
     if ($telefono && !preg_match('/^\d{4}-\d{4}$/', $telefono)) {
         $_SESSION['mensaje'] = 'El número de teléfono debe tener formato 0000-0000.';
         $_SESSION['tipo_mensaje'] = 'error';
@@ -89,7 +89,7 @@ function actualizarContacto() {
     $nombre = trim($_POST['nombre_contacto'] ?? '');
     $relacion = trim($_POST['relacion'] ?? '');
     $telefono = trim($_POST['numero_telefono'] ?? '');
-    // Nota: id_empleado ya no se actualiza en modo edición (campo bloqueado)
+
 
     if ($id_contacto === '' || $nombre === '') {
         $_SESSION['mensaje'] = 'Debe ingresar el nombre del contacto.';
@@ -99,7 +99,6 @@ function actualizarContacto() {
     }
 
     // Validar nombre y relación
-    // Normalizar y validar nombre usando la misma lógica que en Empleados/Puestos
     $nombre = normalize_name($nombre);
     if (!is_valid_name($nombre) || mb_strlen($nombre) < 2 || mb_strlen($nombre) > 60) {
         $_SESSION['mensaje'] = 'El nombre del contacto sólo debe contener letras y espacios (2-60 caracteres).';
@@ -107,7 +106,7 @@ function actualizarContacto() {
         header('Location: Contacto_emergencias.php');
         exit();
     }
-    // Normalizar y validar relación (opcional)
+
     if ($relacion !== '') {
         $relacion = normalize_name($relacion);
         if (!is_valid_name($relacion) || mb_strlen($relacion) < 2 || mb_strlen($relacion) > 40) {
@@ -174,7 +173,6 @@ function obtenerContactos() {
     return $data;
 }
 
-// ---------------------- Normalización y validación de nombres (reutilizado)
 function normalize_name($s) {
     $s = isset($s) ? (string)$s : '';
     $s = preg_replace('/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/u', '', $s);
@@ -230,9 +228,13 @@ desconectar($conn);
 <body>
 <header class="mb-4">
     <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
-        <h1 class="mb-0">Gestión de Contactos de Emergencia</h1>
+        <h1 class="mb-0">Gestión de Empleados</h1>
         <ul class="nav nav-pills gap-2 mb-0">
-            <li class="nav-item"><a href="../menu_empleados.php" class="nav-link">Regresar al Menú</a></li>
+            <li class="nav-item">
+                <a href="../menu_empleados.php" class="btn-back" aria-label="Regresar al menú principal">
+                    <span class="arrow">←</span><span>Regresar al Menú</span>
+                </a>
+            </li>
         </ul>
     </div>
 </header>
