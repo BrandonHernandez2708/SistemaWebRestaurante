@@ -97,4 +97,91 @@ document.addEventListener('DOMContentLoaded', function () {
       } catch(e){}
     });
   }
+
+  // ==== Exportaciones en Detalle de Planilla PDF/EXCEl
+  const btnPdf = document.getElementById('btn-pdf');
+  if (btnPdf) {
+    btnPdf.addEventListener('click', function () {
+      try {
+        const jspdfNS = window.jspdf || {};
+        const jsPDF = jspdfNS.jsPDF;
+        if (!jsPDF) { alert('No se pudo cargar jsPDF'); return; }
+
+        const doc = new jsPDF('l', 'pt', 'a4');
+
+        // Tomar textos desde el DOM
+        const titleEl = document.querySelector('#export-area h2');
+        const infoEl = document.querySelector('#export-area p');
+        const titulo = titleEl ? titleEl.textContent.trim() : 'Detalle de Planilla';
+        const info = infoEl ? infoEl.textContent.trim() : '';
+
+        doc.setFontSize(16);
+        doc.text(titulo, 40, 40);
+        doc.setFontSize(11);
+        if (info) doc.text(info, 40, 60);
+
+        if (typeof doc.autoTable !== 'function') {
+          alert('No está disponible autoTable para jsPDF');
+          return;
+        }
+        doc.autoTable({ html: '#tabla-detalle table', startY: 100, styles: { fontSize: 9 } });
+
+        // Construir nombre de archivo a partir del título si es posible
+        let nombre = 'Planilla.pdf';
+        const m = titulo.match(/([A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)\s+(\d{4})/);
+        if (m) nombre = `Planilla_${m[2]}_${m[1]}.pdf`;
+        doc.save(nombre);
+      } catch (e) {
+        console.error(e);
+        alert('No fue posible generar el PDF.');
+      }
+    });
+  }
+
+  const btnExcel = document.getElementById('btn-excel');
+  if (btnExcel) {
+    btnExcel.addEventListener('click', async function () {
+      try {
+        if (typeof html2canvas === 'undefined') { alert('No está disponible html2canvas'); return; }
+        if (typeof ExcelJS === 'undefined') { alert('No está disponible ExcelJS'); return; }
+        if (typeof saveAs === 'undefined') { alert('No está disponible FileSaver'); return; }
+
+        const area = document.getElementById('export-area');
+        if (!area) return;
+
+        const canvas = await html2canvas(area, {
+          backgroundColor: '#ffffff',
+          scale: window.devicePixelRatio < 2 ? 2 : window.devicePixelRatio
+        });
+        const dataUrl = canvas.toDataURL('image/png');
+
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Detalle');
+        const imageId = wb.addImage({ base64: dataUrl, extension: 'png' });
+        ws.addImage(imageId, {
+          tl: { col: 0, row: 0 },
+          ext: { width: canvas.width, height: canvas.height }
+        });
+
+        // Crear espacio para visualizar la imagen completa
+        const approxColWidth = Math.ceil(canvas.width / 7);
+        ws.getColumn(1).width = Math.min(255, approxColWidth);
+        ws.getRow(1).height = Math.ceil(canvas.height * 0.75);
+
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+        // Nombre a partir del título si se puede
+        const titleEl = document.querySelector('#export-area h2');
+        const titulo = titleEl ? titleEl.textContent.trim() : '';
+        let nombre = 'Planilla.xlsx';
+        const m = titulo.match(/([A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)\s+(\d{4})/);
+        if (m) nombre = `Planilla_${m[2]}_${m[1]}.xlsx`;
+        saveAs(blob, nombre);
+      } catch (e) {
+        console.error(e);
+        alert('No fue posible exportar a Excel.');
+      }
+    });
+  }
 });

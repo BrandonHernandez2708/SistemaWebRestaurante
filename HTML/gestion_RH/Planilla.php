@@ -13,6 +13,19 @@ function mes_nombre($m) {
     return $nombres[$m] ?? $m;
 }
 
+// Formato de fecha para mostrar: d/m/Y
+function fecha_esp($f) {
+  if (!$f) return '';
+  // Tomar solo la parte de fecha si viniera con hora
+  $solo = substr($f, 0, 10);
+  $d = DateTime::createFromFormat('Y-m-d', $solo);
+  if ($d) return $d->format('d/m/Y');
+  // Intentar Y-m-d H:i:s
+  $d2 = DateTime::createFromFormat('Y-m-d H:i:s', $f);
+  if ($d2) return $d2->format('d/m/Y');
+  return htmlspecialchars($f);
+}
+
 
 // 1) Cargar histórico de planillas
 $conn = conectar();
@@ -22,9 +35,7 @@ $planillas = [];
 while ($h = $hist->fetch_assoc()) $planillas[] = $h;
 desconectar($conn);
 
-// -------------------------------
 // 2) Acciones: Guardar planilla
-// -------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guardar') {
   $mes = intval($_POST['mes'] ?? 0);
   $anio = intval($_POST['anio'] ?? 0);
@@ -52,8 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
       header('Location: Planilla.php?mes=' . $mes . '&anio=' . $anio);
       exit();
     } else {
-      // Calcular planilla general (sin filtros)
-      // Obtenemos bonificaciones y penalizaciones por empleado para el mes/año en una sola consulta
       $sql = "SELECT 
             e.id_empleado, p.sueldo_base,
             250 AS bono_fijo,
@@ -74,8 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
           ) pen ON pen.id_empleado = e.id_empleado
           GROUP BY e.id_empleado";
 
-      // Insert head
-      // Usar la fecha de generación introducida por el usuario si viene y es válida (YYYY-MM-DD)
       $fechaGen = date('Y-m-d');
       $fechaGenManual = trim($_POST['fecha_generacion_manual'] ?? '');
       if ($fechaGenManual !== '') {
@@ -94,7 +101,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
 
             // Calcular detalle
       $st = $conn->prepare($sql);
-      // bind: mes/anio para bonificaciones y mes/anio para penalizaciones
       $st->bind_param('iiii', $mes, $anio, $mes, $anio);
             $st->execute();
             $rs = $st->get_result();
@@ -136,8 +142,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
     }
 }
 
-// Valores para selects y guardado: si vienen por GET se usan, sino se toman valores por defecto
-// Valores para selects y guardado: si vienen por GET se usan, sino se toman valores por defecto
 $mes = intval($_GET['mes'] ?? date('n'));
 $anio = intval($_GET['anio'] ?? date('Y'));
 $fecha_filtro = trim($_GET['fecha'] ?? ''); // YYYY-MM-DD opcional
@@ -181,7 +185,7 @@ $filtro_activo = false;
 <section class="card shadow p-4 mb-4">
   <h2 class="card__title text-primary mb-4">Generar / Visualizar planilla</h2>
   <form class="row g-3" id="form-buscar" method="get" action="Planilla_Detalle.php">
-    <!-- Opciones de filtrado (Mes/Año vs Fecha exacta) eliminadas según solicitud -->
+
 
     <div class="col-md-2" id="col-mes">
       <label class="form-label">Mes</label>
@@ -199,8 +203,7 @@ $filtro_activo = false;
       <label class="form-label">Fecha</label>
       <input type="date" class="form-control" name="fecha" value="<?= htmlspecialchars($fecha_filtro) ?>">
     </div>
-    <!-- Sucursal y Departamento eliminados según solicitud -->
-    <!-- Botón "Ver" eliminado (la vista previa se abre desde Planilla_Detalle.php cuando sea necesario) -->
+
   </form>
   <form class="mt-3" id="form-guardar" method="post">
     <input type="hidden" name="accion" value="guardar">
@@ -223,7 +226,6 @@ $filtro_activo = false;
   </form>
 </section>
 
-<!-- Vista previa movida a Planilla_Detalle.php. Al hacer click en "Ver" se redirige allí con los filtros seleccionados. -->
 
 <section class="card shadow p-4">
   <h2 class="text-primary mb-3">Histórico de planillas guardadas</h2>
@@ -245,7 +247,7 @@ $filtro_activo = false;
             <tr>
               <td><?= $pl['anio'] ?></td>
               <td><?= mes_nombre($pl['mes']) ?></td>
-              <td><?= $pl['fecha_generacion'] ?></td>
+              <td><?= fecha_esp($pl['fecha_generacion']) ?></td>
               <td><?= $pl['total_empleados'] ?></td>
               <td>Q <?= number_format($pl['total_general'],2) ?></td>
               <td>

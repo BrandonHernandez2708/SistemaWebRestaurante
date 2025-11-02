@@ -12,6 +12,16 @@ function mes_nombre($m) {
     return $nombres[intval($m)] ?? $m;
 }
 
+function fecha_esp($f) {
+  if (!$f) return '';
+  $solo = substr($f, 0, 10);
+  $d = DateTime::createFromFormat('Y-m-d', $solo);
+  if ($d) return $d->format('d/m/Y');
+  $d2 = DateTime::createFromFormat('Y-m-d H:i:s', $f);
+  if ($d2) return $d2->format('d/m/Y');
+  return htmlspecialchars($f);
+}
+
 $id_planilla = intval($_GET['id_planilla'] ?? 0);
 if ($id_planilla <= 0) { die('Parámetro inválido.'); }
 
@@ -69,7 +79,7 @@ desconectar($conn);
 <section class="card shadow p-4 mb-4">
   <h2 class="text-primary mb-3">
     <?= mes_nombre($head['mes']).' '.$head['anio'] ?> &middot;
-    Generada: <?= htmlspecialchars($head['fecha_generacion']) ?>
+  Generada: <?= fecha_esp($head['fecha_generacion']) ?>
   </h2>
   <p class="mb-0"><strong>Empleados:</strong> <?= intval($head['total_empleados']) ?> &nbsp; | &nbsp;
      <strong>Total General:</strong> Q <?= number_format($head['total_general'],2) ?></p>
@@ -137,55 +147,6 @@ desconectar($conn);
 <!-- ExcelJS y FileSaver para generar XLSX con imagen -->
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-<script>
-document.getElementById('btn-pdf').addEventListener('click', function(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF('l', 'pt', 'a4');
-
-  doc.setFontSize(16);
-  doc.text('Detalle de Planilla - <?= mes_nombre($head['mes']).' '.$head['anio'] ?>', 40, 40);
-  doc.setFontSize(11);
-  doc.text('Generada: <?= htmlspecialchars($head['fecha_generacion']) ?>', 40, 60);
-  doc.text('Empleados: <?= intval($head['total_empleados']) ?>', 40, 78);
-  doc.text('Total General: Q <?= number_format($head['total_general'],2) ?>', 220, 78);
-
-  // Construir tabla a partir del HTML
-  doc.autoTable({ html: '#tabla-detalle table', startY: 100, styles: { fontSize: 9 } });
-
-  doc.save('Planilla_<?= $head['anio'] ?>_<?= $head['mes'] ?>.pdf');
-});
-
-document.getElementById('btn-excel').addEventListener('click', async function(){
-  const area = document.getElementById('export-area');
-  if (!area) return;
-
-  // Capturar como imagen con buena resolución
-  const canvas = await html2canvas(area, {
-    backgroundColor: '#ffffff',
-    scale: window.devicePixelRatio < 2 ? 2 : window.devicePixelRatio
-  });
-  const dataUrl = canvas.toDataURL('image/png');
-
-  // Crear libro y hoja
-  const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('Detalle');
-
-  const imageId = wb.addImage({ base64: dataUrl, extension: 'png' });
-  ws.addImage(imageId, {
-    tl: { col: 0, row: 0 },
-    ext: { width: canvas.width, height: canvas.height }
-  });
-
-
-  const approxColWidth = Math.ceil(canvas.width / 7); 
-  ws.getColumn(1).width = Math.min(255, approxColWidth); 
-  ws.getRow(1).height = Math.ceil(canvas.height * 0.75); 
-
-  const buffer = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const nombre = 'Planilla_<?= $head['anio'] ?>_<?= $head['mes'] ?>.xlsx';
-  saveAs(blob, nombre);
-});
-</script>
+<script src="/SistemaWebRestaurante/javascript/Planilla.js"></script>
 </body>
 </html>
