@@ -29,10 +29,19 @@
     
     <div class="sidebar-empleados">
         <ul>
+
+            <li>
+                <a href="#" class="submenu-toggle"><span>👤</span> Clientes</a>
+                <ul class="submenu">
+                    <li><a href="Clientes/clientes.php">Clientes</a></li>
+                </ul>
+            </li>
+
             <li>
                 <a href="#" class="submenu-toggle"><span>📅</span> Reservaciones</a>
                 <ul class="submenu">
-                    <li><a href="reservaciones.php">Nueva Reservación</a></li>
+                    <li><a href="Mesas/mesas.php">Mesas</a></li>
+                    <li><a href="Reservaciones/reservaciones.php">Reservaciones</a></li>
                 </ul>
             </li>
 

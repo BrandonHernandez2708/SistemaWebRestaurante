@@ -30,10 +30,16 @@
     <div class="sidebar-empleados">
         <ul>
             <li>
+                <a href="#" class="submenu-toggle"><span>👤</span> Clientes</a>
+                <ul class="submenu">
+                    <li><a href="reporte_clientes/reporte_clientes.php">Reporte Clientes</a></li>
+                </ul>
+            </li>
+
+            <li>
                 <a href="#" class="submenu-toggle"><span>📅</span> Reservaciones</a>
                 <ul class="submenu">
-                    <li><a href="#" class="consulta-only" data-href="../HTML/Mesas/mesas.php">Mesas</a></li>
-                    <li><a href="#" class="consulta-only" data-href="../HTML/Reservaciones/reservaciones.php">Nueva Reservación</a></li>
+                    <li><a href="Reporte_Reservaciones/reporte_reservaciones.php">Reporte Reservaciones</a></li>
                 </ul>
             </li>
 
@@ -121,27 +127,45 @@
                 </ul>
             </li>
 
-  <li>
-    <a href="#" class="submenu-toggle"><span>💰</span> Facturaciones</a>
-    <ul class="submenu">
-       
-        <li><a href="Reporte_Facturacion/Reporte_Facturacion.php">Reportes de Facturación</a></li>
-    </ul>
-</li>
+            <li>
+                <a href="#" class="submenu-toggle"><span>💰</span> Facturaciones</a>
+                <ul class="submenu">
+                
+                    <li><a href="Reporte_Facturacion/Reporte_Facturacion.php">Reportes de Facturación</a></li>
+                </ul>
+            </li>
        
 
-                <li>
+            <li>
                 <a href="#" class="submenu-toggle"><span>📦</span> Insumos</a>
                 <ul class="submenu">
                     <li>
                     <a href="Reportes_Insumos/lista_insumos.php">Lista de Insumos</a>
                     <a href="Reportes_Insumos/detalle_compras_insumos.php">Detalle de Compras de Insumos</a>
-                    </li>
+            </li>
                 </ul>
                 </li>
+
+            
+            <li>
+                <a href="#" class="submenu-toggle"><span>👤</span>Consultas Inteligentes</a>
+                <ul class="submenu">
+                    <li><a href="ChatGpt/chatgpt.php">Consultas con ChatGpt</a></li>
+                </ul>
+            </li>
+
+            <li>
+                <a href="#" class="submenu-toggle"><span>👤</span>Auditoria</a>
+                <ul class="submenu">
+                    <li><a href="Bitacora/bitacora.php">Bitacora del sistema</a></li>
+                </ul>
+            </li>
+
             <li><a href="login.php"><span>🚪</span> Cerrar Sesión</a></li>
         </ul>
     </div>
+
+                
 
     <div class="container">
         <div class="consulta-notice">Nota: Esta vista es solo para consultar datos. Las acciones y redirecciones están deshabilitadas aquí.</div>
