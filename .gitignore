@@ -1,0 +1,46 @@
+# ============================================
+# MAREA ROJA - Sistema Web Restaurante
+# Archivo .gitignore - Seguridad y limpieza
+# ============================================
+
+# Archivos sensibles
+.env
+.env.*
+config/openai.php
+config/bootstrap.php
+
+# Archivos de configuración local
+composer.lock
+composer.phar
+vendor/
+node_modules/
+package-lock.json
+
+# Configuración de Laragon / VSCode
+*.code-workspace
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Cachés, logs y temporales
+*.log
+*.cache
+*.tmp
+*.bak
+*.swp
+*.DS_Store
+Thumbs.db
+
+# Archivos de sistema
+.idea/
+*.iml
+
+# Copias automáticas o temporales de PHP
+*.zip
+*.tar.gz
+*.old
+*.backup
+
+# Archivos de respaldo y pruebas locales
+test_env.php
+test_*.php
