@@ -63,7 +63,6 @@
                     <li><a href="gestion_RH/Asistencias.php">Asistencias de Empleados</a></li>
                     <li><a href="gestion_RH/Penalizacion.php">Penalizaciones de Empleados</a></li>
                     <li><a href="gestion_RH/Bonificaciones.php">Bonificaciones de Empleados</a></li>
-                    <li><a href="gestion_RH/Planilla.php">Planilla</a></li>
                 </ul>
             </li>
 
