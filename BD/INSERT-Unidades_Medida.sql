@@ -15,6 +15,21 @@ END//
 
 DELIMITER 
 
+DELIMITER $$
+
+CREATE TRIGGER trg_actualizar_stock_perdida
+AFTER INSERT ON perdidas_inventario
+FOR EACH ROW
+BEGIN
+    -- Actualiza el stock del ingrediente afectado
+    UPDATE ingredientes
+    SET cantidad_stock = cantidad_stock - NEW.cantidad_unitaria_perdida
+    WHERE id_ingrediente = NEW.id_ingrediente;
+END$$
+
+DELIMITER ;
+
+
 INSERT INTO unidades_medida (unidad, abreviatura) VALUES
 -- Unidades de peso
 ('Gramos', 'g'),

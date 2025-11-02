@@ -70,7 +70,9 @@ function crearOrden(): void {
             $stmt_update->bind_param("di", $total_orden, $id_orden);
             $stmt_update->execute();
             $stmt_update->close();
-            
+            // Actualizar inventario según los ingredientes de cada plato
+            actualizarInventarioPorOrden($conn, $id_orden);
+
             $conn->commit();
             $_SESSION['mensaje'] = "Orden creada exitosamente";
             $_SESSION['tipo_mensaje'] = "success";
@@ -243,6 +245,110 @@ function calcularSubtotal($conn, $id_plato, $id_bebida, $cantidad): float {
     
     return $subtotal;
 }
+
+function actualizarInventarioPorOrden(mysqli $conn, int $id_orden): void {
+    // Obtener los platos en la orden con sus cantidades
+    $sql_detalles = "SELECT id_plato, cantidad 
+                     FROM detalle_orden 
+                     WHERE id_orden = ? AND id_plato IS NOT NULL";
+    $stmt_detalles = $conn->prepare($sql_detalles);
+    $stmt_detalles->bind_param("i", $id_orden);
+    $stmt_detalles->execute();
+    $result_detalles = $stmt_detalles->get_result();
+
+    while ($detalle = $result_detalles->fetch_assoc()) {
+        $id_plato = (int)$detalle['id_plato'];
+        $cantidad_plato = (float)$detalle['cantidad'];
+
+        // Obtener los ingredientes y unidades de cada plato según la receta
+        $sql_receta = "SELECT r.id_ingrediente, r.id_unidad AS unidad_receta, 
+                              i.id_unidad AS unidad_inventario, 
+                              i.cantidad_stock,
+                              IFNULL(r.cantidad_por_plato, 1.0) AS cantidad_por_plato
+                       FROM receta r
+                       INNER JOIN ingredientes i ON i.id_ingrediente = r.id_ingrediente
+                       WHERE r.id_plato = ?";
+        $stmt_receta = $conn->prepare($sql_receta);
+        $stmt_receta->bind_param("i", $id_plato);
+        $stmt_receta->execute();
+        $result_receta = $stmt_receta->get_result();
+
+        while ($receta = $result_receta->fetch_assoc()) {
+            $id_ingrediente = (int)$receta['id_ingrediente'];
+            $unidad_receta = (int)$receta['unidad_receta'];
+            $unidad_inventario = (int)$receta['unidad_inventario'];
+            $stock_actual = (float)$receta['cantidad_stock'];
+            $cantidad_por_plato = (float)$receta['cantidad_por_plato'];
+
+            // Obtener factor de conversión
+            $factor = obtenerFactorConversion($conn, $unidad_receta, $unidad_inventario);
+
+            // Calcular la cantidad total a restar
+            $cantidad_a_restar = $cantidad_por_plato * $cantidad_plato * $factor;
+
+            // Validar stock suficiente
+            if ($stock_actual < $cantidad_a_restar) {
+                throw new Exception("Stock insuficiente para el ingrediente ID $id_ingrediente. 
+                                     Disponible: $stock_actual, requerido: $cantidad_a_restar");
+            }
+
+            // Actualizar inventario
+            $sql_update = "UPDATE ingredientes 
+                           SET cantidad_stock = cantidad_stock - ? 
+                           WHERE id_ingrediente = ?";
+            $stmt_update = $conn->prepare($sql_update);
+            $stmt_update->bind_param("di", $cantidad_a_restar, $id_ingrediente);
+            $stmt_update->execute();
+            $stmt_update->close();
+        }
+
+        $stmt_receta->close();
+    }
+
+    $stmt_detalles->close();
+}
+
+function obtenerFactorConversion(mysqli $conn, int $unidad_origen, int $unidad_destino): float {
+    if ($unidad_origen === $unidad_destino) {
+        return 1.0;
+    }
+
+    // Buscar conversión directa
+    $sql = "SELECT factor_conversion 
+            FROM conversion_unidades 
+            WHERE id_unidad_origen = ? AND id_unidad_destino = ?
+            LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ii", $unidad_origen, $unidad_destino);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $stmt->close();
+
+    if ($row) {
+        return (float)$row['factor_conversion'];
+    }
+
+    // Si no hay directa, buscar inversa
+    $sql_inv = "SELECT factor_conversion 
+                FROM conversion_unidades 
+                WHERE id_unidad_origen = ? AND id_unidad_destino = ?
+                LIMIT 1";
+    $stmt_inv = $conn->prepare($sql_inv);
+    $stmt_inv->bind_param("ii", $unidad_destino, $unidad_origen);
+    $stmt_inv->execute();
+    $result_inv = $stmt_inv->get_result();
+    $row_inv = $result_inv->fetch_assoc();
+    $stmt_inv->close();
+
+    if ($row_inv) {
+        return 1 / (float)$row_inv['factor_conversion'];
+    }
+
+    // Si no existe relación, retornar 1 (sin conversión)
+    return 1.0;
+}
+
 
 // --- Funciones para obtener datos ---
 function obtenerPlatos(): array {

@@ -26,19 +26,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 function crearReceta() {
-    global $conn;
     $conn = conectar();
     
-    $id_plato = intval($_POST['id_plato'] ?? '');
-    $id_ingrediente = intval($_POST['id_ingrediente'] ?? '');
-    $id_unidad = intval($_POST['id_unidad'] ?? '');
-    
-    $sql = "INSERT INTO receta (id_plato, id_ingrediente, id_unidad) 
-            VALUES (?, ?, ?)";
-    
+    $id_plato = intval($_POST['id_plato'] ?? 0);
+    $id_ingrediente = intval($_POST['id_ingrediente'] ?? 0);
+    $id_unidad = intval($_POST['id_unidad'] ?? 0);
+    $cantidad = floatval($_POST['cantidad_por_plato'] ?? 0);
+
+    $sql = "INSERT INTO receta (id_plato, id_ingrediente, id_unidad, cantidad_por_plato) 
+            VALUES (?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("iii", $id_plato, $id_ingrediente, $id_unidad);
-    
+    $stmt->bind_param("iiid", $id_plato, $id_ingrediente, $id_unidad, $cantidad);
+
     if ($stmt->execute()) {
         $_SESSION['mensaje'] = "Receta creada exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
@@ -46,7 +45,7 @@ function crearReceta() {
         $_SESSION['mensaje'] = "Error al crear receta: " . $conn->error;
         $_SESSION['tipo_mensaje'] = "error";
     }
-    
+
     $stmt->close();
     desconectar($conn);
     header('Location: recetas.php');
@@ -54,20 +53,20 @@ function crearReceta() {
 }
 
 function actualizarReceta() {
-    global $conn;
     $conn = conectar();
     
-    $id_registro_receta = intval($_POST['id_registro_receta'] ?? '');
-    $id_plato = intval($_POST['id_plato'] ?? '');
-    $id_ingrediente = intval($_POST['id_ingrediente'] ?? '');
-    $id_unidad = intval($_POST['id_unidad'] ?? '');
-    
-    $sql = "UPDATE receta SET id_plato = ?, id_ingrediente = ?, id_unidad = ? 
+    $id_registro_receta = intval($_POST['id_registro_receta'] ?? 0);
+    $id_plato = intval($_POST['id_plato'] ?? 0);
+    $id_ingrediente = intval($_POST['id_ingrediente'] ?? 0);
+    $id_unidad = intval($_POST['id_unidad'] ?? 0);
+    $cantidad = floatval($_POST['cantidad_por_plato'] ?? 0);
+
+    $sql = "UPDATE receta 
+            SET id_plato = ?, id_ingrediente = ?, id_unidad = ?, cantidad_por_plato = ? 
             WHERE id_registro_receta = ?";
-    
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("iiii", $id_plato, $id_ingrediente, $id_unidad, $id_registro_receta);
-    
+    $stmt->bind_param("iiidi", $id_plato, $id_ingrediente, $id_unidad, $cantidad, $id_registro_receta);
+
     if ($stmt->execute()) {
         $_SESSION['mensaje'] = "Receta actualizada exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
@@ -75,7 +74,7 @@ function actualizarReceta() {
         $_SESSION['mensaje'] = "Error al actualizar receta: " . $conn->error;
         $_SESSION['tipo_mensaje'] = "error";
     }
-    
+
     $stmt->close();
     desconectar($conn);
     header('Location: recetas.php');
@@ -83,16 +82,13 @@ function actualizarReceta() {
 }
 
 function eliminarReceta() {
-    global $conn;
     $conn = conectar();
-    
-    $id_registro_receta = intval($_POST['id_registro_receta'] ?? '');
-    
+    $id_registro_receta = intval($_POST['id_registro_receta'] ?? 0);
+
     $sql = "DELETE FROM receta WHERE id_registro_receta = ?";
-    
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $id_registro_receta);
-    
+
     if ($stmt->execute()) {
         $_SESSION['mensaje'] = "Receta eliminada exitosamente";
         $_SESSION['tipo_mensaje'] = "success";
@@ -100,14 +96,13 @@ function eliminarReceta() {
         $_SESSION['mensaje'] = "Error al eliminar receta: " . $conn->error;
         $_SESSION['tipo_mensaje'] = "error";
     }
-    
+
     $stmt->close();
     desconectar($conn);
     header('Location: recetas.php');
     exit();
 }
 
-// Obtener todas las recetas para mostrar en la tabla
 function obtenerRecetas() {
     $conn = conectar();
     $sql = "SELECT r.*, p.nombre_plato, i.nombre_ingrediente, um.unidad, um.abreviatura 
@@ -116,68 +111,42 @@ function obtenerRecetas() {
             LEFT JOIN ingredientes i ON r.id_ingrediente = i.id_ingrediente 
             LEFT JOIN unidades_medida um ON r.id_unidad = um.id_unidad 
             ORDER BY p.nombre_plato, i.nombre_ingrediente";
-    $resultado = $conn->query($sql);
+    $res = $conn->query($sql);
     $recetas = [];
-    
-    if ($resultado && $resultado->num_rows > 0) {
-        while($fila = $resultado->fetch_assoc()) {
+    if ($res && $res->num_rows > 0) {
+        while($fila = $res->fetch_assoc()) {
             $recetas[] = $fila;
         }
     }
-    
     desconectar($conn);
     return $recetas;
 }
 
-// Obtener platos para el dropdown
 function obtenerPlatos() {
     $conn = conectar();
     $sql = "SELECT * FROM platos ORDER BY nombre_plato";
-    $resultado = $conn->query($sql);
-    $platos = [];
-    
-    if ($resultado && $resultado->num_rows > 0) {
-        while($fila = $resultado->fetch_assoc()) {
-            $platos[] = $fila;
-        }
-    }
-    
+    $res = $conn->query($sql);
+    $datos = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     desconectar($conn);
-    return $platos;
+    return $datos;
 }
 
-// Obtener ingredientes para el dropdown
 function obtenerIngredientes() {
     $conn = conectar();
     $sql = "SELECT * FROM ingredientes ORDER BY nombre_ingrediente";
-    $resultado = $conn->query($sql);
-    $ingredientes = [];
-    
-    if ($resultado && $resultado->num_rows > 0) {
-        while($fila = $resultado->fetch_assoc()) {
-            $ingredientes[] = $fila;
-        }
-    }
-    
+    $res = $conn->query($sql);
+    $datos = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     desconectar($conn);
-    return $ingredientes;
+    return $datos;
 }
 
-// Obtener unidades de medida para el dropdown
 function obtenerUnidadesMedida() {
     $conn = conectar();
     $sql = "SELECT * FROM unidades_medida ORDER BY unidad";
-    $resultado = $conn->query($sql);
-    $unidades = [];
-    
-    if ($resultado && $resultado->num_rows > 0) {
-        while($fila = $resultado->fetch_assoc()) {
-            $unidades[] = $fila;
-        }
-    }
-    
+    $res = $conn->query($sql);
+    $datos = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     desconectar($conn);
-    return $unidades;
+    return $datos;
 }
 
 $recetas = obtenerRecetas();
@@ -191,213 +160,116 @@ $unidades = obtenerUnidadesMedida();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Recetas - Marea Roja</title>
-
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    
-  <style>
-    /* ESTILOS INLINE QUE USA VEHICULOS - Agregar en recetas */
-    .mensaje {
-        padding: 12px;
-        margin: 10px 0;
-        border-radius: 8px;
-        font-weight: 500;
-    }
-    
-    .mensaje.success {
-        background-color: #d1fae5;
-        color: #065f46;
-        border: 1px solid #a7f3d0;
-    }
-    
-    .mensaje.error {
-        background-color: #fee2e2;
-        color: #991b1b;
-        border: 1px solid #fecaca;
-    }
-    
-    .btn-action {
-        margin: 1px;
-        font-size: 0.875rem;
-    }
-    
-    .card {
-        border: none;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
-    
-    .table th {
-        background-color: #1e40af;
-        color: white;
-        font-weight: 600;
-    }
-    
-    .badge-estado {
-        font-size: 0.75rem;
-        padding: 4px 8px;
-        border-radius: 6px;
-    }
-    
-    .form-control:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
-    }
-    
-    .badge-info {
-        background-color: #0dcaf0;
-        color: black;
-        font-size: 0.75rem;
-        padding: 4px 8px;
-        border-radius: 6px;
-    }
-</style>
-
-    <!-- Bootstrap y librerías base -->
- <link rel="stylesheet" href="../../css/bootstrap.min.css">
- <link rel="stylesheet" href="../../css/diseñoModulos.css">
+    <link rel="stylesheet" href="../../css/bootstrap.min.css">
+    <link rel="stylesheet" href="../../css/diseñoModulos.css">
+    <style>
+        body, input, select { font-family: 'Poppins', sans-serif; }
+        .mensaje { padding:10px; border-radius:5px; margin:10px 0; }
+        .mensaje.success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+        .mensaje.error { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+        .table th { background:#0d6efd; color:white; }
+    </style>
 </head>
-
 <body>
 <header class="mb-4">
-    <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
+    <div class="container d-flex justify-content-between align-items-center py-3">
         <h1 class="mb-0">GESTIÓN DE RECETAS - MAREA ROJA</h1>
-        <ul class="nav nav-pills gap-2 mb-0">
-            <li class="nav-item"><a href="../menu_empleados.php" class="nav-link">Regresar al Menú</a></li>
-        </ul>
+        <a href="../menu_empleados.php" class="btn btn-outline-dark">Regresar</a>
     </div>
 </header>
 
 <main class="container my-4">
-    <!-- Mostrar mensajes -->
     <?php if (isset($_SESSION['mensaje'])): ?>
-        <div class="mensaje <?php echo $_SESSION['tipo_mensaje']; ?>">
-            <?php 
-            echo htmlspecialchars($_SESSION['mensaje']); 
-            unset($_SESSION['mensaje']);
-            unset($_SESSION['tipo_mensaje']);
-            ?>
+        <div class="mensaje <?= $_SESSION['tipo_mensaje']; ?>">
+            <?= htmlspecialchars($_SESSION['mensaje']); ?>
         </div>
+        <?php unset($_SESSION['mensaje'], $_SESSION['tipo_mensaje']); ?>
     <?php endif; ?>
 
     <section class="card shadow p-4">
-        <h2 class="card-title text-primary mb-4">
-            <i class="bi bi-journal-text me-2"></i>FORMULARIO DE RECETAS
-        </h2>
+        <h2 class="mb-3 text-primary"><i class="bi bi-journal-text me-2"></i>Formulario de Recetas</h2>
 
         <form id="form-receta" method="post" class="row g-3">
-            <input type="hidden" id="operacion" name="operacion" value="crear">
-            <input type="hidden" id="id_registro_receta" name="id_registro_receta" value="">
-            
-            <div class="col-md-4">
-                <label class="form-label fw-semibold" for="id_plato">
-                    <i class="bi bi-egg-fried me-1"></i>Plato: *
-                </label>
+            <input type="hidden" name="operacion" id="operacion" value="crear">
+            <input type="hidden" name="id_registro_receta" id="id_registro_receta">
+
+            <div class="col-md-3">
+                <label class="form-label">Plato *</label>
                 <select class="form-control" id="id_plato" name="id_plato" required>
-                    <option value="">Seleccione un plato</option>
-                    <?php foreach($platos as $plato): ?>
-                        <option value="<?php echo $plato['id_plato']; ?>">
-                            <?php echo htmlspecialchars($plato['nombre_plato']); ?>
-                        </option>
+                    <option value="">Seleccione...</option>
+                    <?php foreach($platos as $p): ?>
+                        <option value="<?= $p['id_plato'] ?>"><?= htmlspecialchars($p['nombre_plato']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            
-            <div class="col-md-4">
-                <label class="form-label fw-semibold" for="id_ingrediente">
-                    <i class="bi bi-box-seam me-1"></i>Ingrediente: *
-                </label>
+
+            <div class="col-md-3">
+                <label class="form-label">Ingrediente *</label>
                 <select class="form-control" id="id_ingrediente" name="id_ingrediente" required>
-                    <option value="">Seleccione un ingrediente</option>
-                    <?php foreach($ingredientes as $ingrediente): ?>
-                        <option value="<?php echo $ingrediente['id_ingrediente']; ?>">
-                            <?php echo htmlspecialchars($ingrediente['nombre_ingrediente']); ?>
-                        </option>
+                    <option value="">Seleccione...</option>
+                    <?php foreach($ingredientes as $i): ?>
+                        <option value="<?= $i['id_ingrediente'] ?>"><?= htmlspecialchars($i['nombre_ingrediente']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            
-            <div class="col-md-4">
-                <label class="form-label fw-semibold" for="id_unidad">
-                    <i class="bi bi-rulers me-1"></i>Unidad de Medida: *
-                </label>
+
+            <div class="col-md-3">
+                <label class="form-label">Unidad *</label>
                 <select class="form-control" id="id_unidad" name="id_unidad" required>
-                    <option value="">Seleccione una unidad</option>
-                    <?php foreach($unidades as $unidad): ?>
-                        <option value="<?php echo $unidad['id_unidad']; ?>">
-                            <?php echo htmlspecialchars($unidad['unidad'] . ' (' . $unidad['abreviatura'] . ')'); ?>
-                        </option>
+                    <option value="">Seleccione...</option>
+                    <?php foreach($unidades as $u): ?>
+                        <option value="<?= $u['id_unidad'] ?>"><?= htmlspecialchars($u['unidad'].' ('.$u['abreviatura'].')') ?></option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Cantidad por Plato *</label>
+                <input type="number" step="0.001" min="0.001" class="form-control" id="cantidad_por_plato" name="cantidad_por_plato" required placeholder="Ej: 200 (gramos)">
             </div>
         </form>
 
-        <div class="d-flex gap-2 mt-4">
-            <button id="btn-nuevo" type="button" class="btn btn-secondary">
-                <i class="bi bi-plus-circle me-1"></i>Nuevo
-            </button>
-            <button id="btn-guardar" type="button" class="btn btn-success">
-                <i class="bi bi-check-lg me-1"></i>Guardar
-            </button>
-            <button id="btn-actualizar" type="button" class="btn btn-warning" style="display:none;">
-                <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
-            </button>
-            <button id="btn-cancelar" type="button" class="btn btn-danger" style="display:none;">
-                <i class="bi bi-x-circle me-1"></i>Cancelar
-            </button>
+        <div class="mt-3">
+            <button id="btn-nuevo" class="btn btn-secondary">Nuevo</button>
+            <button id="btn-guardar" class="btn btn-success">Guardar</button>
+            <button id="btn-actualizar" class="btn btn-warning d-none">Actualizar</button>
+            <button id="btn-cancelar" class="btn btn-danger d-none">Cancelar</button>
         </div>
 
-        <h2 class="card-title mb-3 mt-5">
-            <i class="bi bi-list-ul me-2"></i>LISTA DE RECETAS
-        </h2>
-        
-        <div class="table-responsive mt-3">
-            <table class="table table-striped table-bordered" id="tabla-recetas">
-                <thead class="table-dark">
+        <h2 class="mt-5 mb-3 text-primary"><i class="bi bi-list-ul me-2"></i>Listado de Recetas</h2>
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Plato</th>
-                        <th>Ingrediente</th>
-                        <th>Unidad</th>
-                        <th>Acciones</th>
+                        <th>ID</th><th>Plato</th><th>Ingrediente</th><th>Unidad</th><th>Cantidad</th><th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach($recetas as $receta): ?>
+                    <?php if ($recetas): foreach($recetas as $r): ?>
                     <tr>
-                        <td><?php echo htmlspecialchars($receta['id_registro_receta']); ?></td>
-                        <td><?php echo htmlspecialchars($receta['nombre_plato']); ?></td>
-                        <td><?php echo htmlspecialchars($receta['nombre_ingrediente']); ?></td>
+                        <td><?= $r['id_registro_receta'] ?></td>
+                        <td><?= htmlspecialchars($r['nombre_plato']) ?></td>
+                        <td><?= htmlspecialchars($r['nombre_ingrediente']) ?></td>
+                        <td><?= htmlspecialchars($r['unidad'].' ('.$r['abreviatura'].')') ?></td>
+                        <td><?= htmlspecialchars($r['cantidad_por_plato']) ?></td>
                         <td>
-                            <span class="badge badge-info">
-                                <?php echo htmlspecialchars($receta['unidad'] . ' (' . $receta['abreviatura'] . ')'); ?>
-                            </span>
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-primary btn-action editar-btn" 
-                                    data-id="<?php echo $receta['id_registro_receta']; ?>"
-                                    data-plato="<?php echo $receta['id_plato']; ?>"
-                                    data-ingrediente="<?php echo $receta['id_ingrediente']; ?>"
-                                    data-unidad="<?php echo $receta['id_unidad']; ?>">
-                                <i class="bi bi-pencil me-1"></i>Editar
-                            </button>
-                            <form method="post" style="display:inline;" onsubmit="return confirm('¿Estás seguro de eliminar esta receta?')">
+                            <button class="btn btn-sm btn-primary editar-btn"
+                                data-id="<?= $r['id_registro_receta'] ?>"
+                                data-plato="<?= $r['id_plato'] ?>"
+                                data-ingrediente="<?= $r['id_ingrediente'] ?>"
+                                data-unidad="<?= $r['id_unidad'] ?>"
+                                data-cantidad="<?= $r['cantidad_por_plato'] ?>">Editar</button>
+                            <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar esta receta?')">
                                 <input type="hidden" name="operacion" value="eliminar">
-                                <input type="hidden" name="id_registro_receta" value="<?php echo $receta['id_registro_receta']; ?>">
-                                <button type="submit" class="btn btn-sm btn-danger btn-action">
-                                    <i class="bi bi-trash me-1"></i>Eliminar
-                                </button>
+                                <input type="hidden" name="id_registro_receta" value="<?= $r['id_registro_receta'] ?>">
+                                <button class="btn btn-sm btn-danger">Eliminar</button>
                             </form>
                         </td>
                     </tr>
-                    <?php endforeach; ?>
-                    <?php if (empty($recetas)): ?>
-                    <tr>
-                        <td colspan="5" class="text-center">No hay recetas registradas</td>
-                    </tr>
+                    <?php endforeach; else: ?>
+                    <tr><td colspan="6" class="text-center">No hay recetas registradas</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -406,100 +278,42 @@ $unidades = obtenerUnidadesMedida();
 </main>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('form-receta');
-        const btnNuevo = document.getElementById('btn-nuevo');
-        const btnGuardar = document.getElementById('btn-guardar');
-        const btnActualizar = document.getElementById('btn-actualizar');
-        const btnCancelar = document.getElementById('btn-cancelar');
-        const operacionInput = document.getElementById('operacion');
-        const idRecetaInput = document.getElementById('id_registro_receta');
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('form-receta');
+    const op = document.getElementById('operacion');
+    const id = document.getElementById('id_registro_receta');
+    const btnNuevo = document.getElementById('btn-nuevo');
+    const btnGuardar = document.getElementById('btn-guardar');
+    const btnActualizar = document.getElementById('btn-actualizar');
+    const btnCancelar = document.getElementById('btn-cancelar');
 
-        // Botón Nuevo
-        btnNuevo.addEventListener('click', function() {
-            limpiarFormulario();
-            mostrarBotonesGuardar();
-        });
+    btnNuevo.onclick = () => limpiar();
+    btnGuardar.onclick = () => { op.value='crear'; form.submit(); };
+    btnActualizar.onclick = () => { op.value='actualizar'; form.submit(); };
+    btnCancelar.onclick = () => limpiar();
 
-        // Botón Guardar (Crear)
-        btnGuardar.addEventListener('click', function() {
-            if (validarFormulario()) {
-                operacionInput.value = 'crear';
-                form.submit();
-            }
-        });
-
-        // Botón Actualizar
-        btnActualizar.addEventListener('click', function() {
-            if (validarFormulario()) {
-                operacionInput.value = 'actualizar';
-                form.submit();
-            }
-        });
-
-        // Botón Cancelar
-        btnCancelar.addEventListener('click', function() {
-            limpiarFormulario();
-            mostrarBotonesGuardar();
-        });
-
-        // Eventos para botones Editar
-        document.querySelectorAll('.editar-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = this.getAttribute('data-id');
-                const plato = this.getAttribute('data-plato');
-                const ingrediente = this.getAttribute('data-ingrediente');
-                const unidad = this.getAttribute('data-unidad');
-
-                // Llenar formulario
-                idRecetaInput.value = id;
-                document.getElementById('id_plato').value = plato;
-                document.getElementById('id_ingrediente').value = ingrediente;
-                document.getElementById('id_unidad').value = unidad;
-
-                mostrarBotonesActualizar();
-            });
-        });
-
-        function limpiarFormulario() {
-            form.reset();
-            idRecetaInput.value = '';
-            operacionInput.value = 'crear';
-        }
-
-        function mostrarBotonesGuardar() {
-            btnGuardar.style.display = 'inline-block';
-            btnActualizar.style.display = 'none';
-            btnCancelar.style.display = 'none';
-        }
-
-        function mostrarBotonesActualizar() {
-            btnGuardar.style.display = 'none';
-            btnActualizar.style.display = 'inline-block';
-            btnCancelar.style.display = 'inline-block';
-        }
-
-        function validarFormulario() {
-            const plato = document.getElementById('id_plato').value;
-            const ingrediente = document.getElementById('id_ingrediente').value;
-            const unidad = document.getElementById('id_unidad').value;
-
-            if (!plato) {
-                alert('El plato es requerido');
-                return false;
-            }
-            if (!ingrediente) {
-                alert('El ingrediente es requerido');
-                return false;
-            }
-            if (!unidad) {
-                alert('La unidad de medida es requerida');
-                return false;
-            }
-
-            return true;
-        }
+    document.querySelectorAll('.editar-btn').forEach(b=>{
+        b.onclick=()=>{
+            id.value=b.dataset.id;
+            document.getElementById('id_plato').value=b.dataset.plato;
+            document.getElementById('id_ingrediente').value=b.dataset.ingrediente;
+            document.getElementById('id_unidad').value=b.dataset.unidad;
+            document.getElementById('cantidad_por_plato').value=b.dataset.cantidad;
+            btnGuardar.classList.add('d-none');
+            btnActualizar.classList.remove('d-none');
+            btnCancelar.classList.remove('d-none');
+        };
     });
+
+    function limpiar(){
+        form.reset();
+        id.value='';
+        op.value='crear';
+        btnGuardar.classList.remove('d-none');
+        btnActualizar.classList.add('d-none');
+        btnCancelar.classList.add('d-none');
+    }
+});
 </script>
 </body>
 </html>
