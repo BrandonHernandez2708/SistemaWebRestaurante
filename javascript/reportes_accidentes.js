@@ -1,4 +1,5 @@
 // ReportesAccidentes.js — gestión de formulario de reportes de accidentes con SweetAlert2
+// CON VALIDACIONES MEJORADAS IMPLEMENTADAS
 
 document.addEventListener('DOMContentLoaded', function () {
     // Elementos
@@ -13,6 +14,120 @@ document.addEventListener('DOMContentLoaded', function () {
     const descripcionInput = document.getElementById('descripcion_accidente');
     const fechaHoraInput = document.getElementById('fecha_hora');
 
+    // Función para sanitizar inputs y prevenir XSS
+    function sanitizarInput(input) {
+        if (!input) return '';
+        return input.toString().trim().replace(/[<>&"']/g, '');
+    }
+
+    // Función para validar descripción
+    function validarDescripcion(descripcion) {
+        const descripcionRegex = /^[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ\s\-\_\.\,\;\:\!\?\(\)\#\$\&\+\=\/\@\"\'\n\r]+$/;
+        return descripcion.length >= 50 && descripcion.length <= 2000 && descripcionRegex.test(descripcion);
+    }
+
+    // Función para validar fecha y hora
+    function validarFechaHora(fechaHora) {
+        const fechaRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+        if (!fechaRegex.test(fechaHora)) {
+            return false;
+        }
+        
+        const fechaObj = new Date(fechaHora);
+        const ahora = new Date();
+        const haceUnAnio = new Date();
+        haceUnAnio.setFullYear(ahora.getFullYear() - 1);
+        
+        return fechaObj <= ahora && fechaObj >= haceUnAnio;
+    }
+
+    // Validación de descripción en tiempo real
+    if (descripcionInput) {
+        descripcionInput.addEventListener('input', function () {
+            const valor = this.value;
+            if (valor.length > 2000) {
+                this.value = valor.substring(0, 2000);
+                showWarning('La descripción no puede exceder los 2000 caracteres');
+            }
+            
+            // Actualizar contador de caracteres
+            actualizarContadorDescripcion(valor.length);
+        });
+
+        descripcionInput.addEventListener('blur', function() {
+            const valor = this.value.trim();
+            if (valor && !validarDescripcion(valor)) {
+                showWarning('La descripción debe tener entre 50 y 2000 caracteres y solo puede contener letras, números, espacios y caracteres comunes de puntuación');
+                this.focus();
+            }
+        });
+    }
+
+    // Función para actualizar contador de caracteres
+    function actualizarContadorDescripcion(cantidad) {
+        let contador = document.getElementById('contador-descripcion');
+        if (!contador) {
+            contador = document.createElement('div');
+            contador.id = 'contador-descripcion';
+            contador.className = 'form-text';
+            descripcionInput.parentNode.appendChild(contador);
+        }
+        
+        const minCaracteres = 50;
+        const maxCaracteres = 2000;
+        let color = 'text-muted';
+        
+        if (cantidad < minCaracteres) {
+            color = 'text-danger';
+        } else if (cantidad > maxCaracteres * 0.9) {
+            color = 'text-warning';
+        } else if (cantidad >= minCaracteres) {
+            color = 'text-success';
+        }
+        
+        contador.innerHTML = `<span class="${color}">${cantidad}/${maxCaracteres} caracteres</span>`;
+        
+        if (cantidad < minCaracteres) {
+            contador.innerHTML += ` <span class="text-danger">(mínimo ${minCaracteres})</span>`;
+        }
+    }
+
+    // Validación de fecha y hora en tiempo real
+    if (fechaHoraInput) {
+        fechaHoraInput.addEventListener('change', function() {
+            const fechaSeleccionada = this.value;
+            
+            if (!validarFechaHora(fechaSeleccionada)) {
+                showWarning('La fecha y hora del accidente no pueden ser futuras ni mayores a 1 año atrás');
+                const ahora = new Date();
+                ahora.setMinutes(ahora.getMinutes() - ahora.getTimezoneOffset());
+                this.value = ahora.toISOString().slice(0, 16);
+            }
+        });
+    }
+
+    // Validación de selecciones
+    const viajeSelect = document.getElementById('id_viaje');
+    const empleadoSelect = document.getElementById('id_empleado');
+
+    if (viajeSelect) {
+        viajeSelect.addEventListener('change', function() {
+            if (this.value && !/^\d+$/.test(this.value)) {
+                showWarning('Seleccione un viaje válido');
+                this.value = '';
+            }
+        });
+    }
+
+    if (empleadoSelect) {
+        empleadoSelect.addEventListener('change', function() {
+            if (this.value && !/^\d+$/.test(this.value)) {
+                showWarning('Seleccione un empleado válido');
+                this.value = '';
+            }
+        });
+    }
+
     // Botones
     if (btnNuevo) btnNuevo.addEventListener('click', function () {
         limpiarFormulario();
@@ -21,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (btnGuardar) btnGuardar.addEventListener('click', function () {
         if (!form) return console.warn('Formulario no encontrado');
-        if (validarFormulario()) {
+        if (validarFormularioCompleto()) {
             const doSubmit = () => {
                 if (operacionInput) operacionInput.value = 'crear_accidente';
                 form.submit();
@@ -29,8 +144,9 @@ document.addEventListener('DOMContentLoaded', function () {
             
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
-                    title: 'Registrar accidente',
-                    text: '¿Deseas registrar este reporte de accidente?',
+                    title: 'Registrar reporte de accidente',
+                    html: `¿Estás seguro de que deseas registrar este reporte de accidente?<br><br>
+                          <span class="text-warning">⚠️ Esta acción registrará oficialmente un incidente en el sistema.</span>`,
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Sí, registrar',
@@ -49,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (btnActualizar) btnActualizar.addEventListener('click', function () {
         if (!form) return console.warn('Formulario no encontrado');
-        if (validarFormulario()) {
+        if (validarFormularioCompleto()) {
             const doSubmit = () => {
                 if (operacionInput) operacionInput.value = 'actualizar_accidente';
                 form.submit();
@@ -102,14 +218,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // Editar desde la tabla
     document.querySelectorAll('.editar-btn').forEach(btn => {
         btn.addEventListener('click', function () {
-            const id = this.getAttribute('data-id');
-            const viaje = this.getAttribute('data-viaje');
-            const empleado = this.getAttribute('data-empleado');
-            const descripcion = this.getAttribute('data-descripcion');
-            const fecha = this.getAttribute('data-fecha');
+            const id = sanitizarInput(this.getAttribute('data-id'));
+            const viaje = sanitizarInput(this.getAttribute('data-viaje'));
+            const empleado = sanitizarInput(this.getAttribute('data-empleado'));
+            const descripcion = sanitizarInput(this.getAttribute('data-descripcion'));
+            const fecha = sanitizarInput(this.getAttribute('data-fecha'));
 
             const doFill = () => {
                 if (idAccidenteInput) idAccidenteInput.value = id || '';
+                
+                // Sanitizar y establecer valores
                 document.getElementById('id_viaje').value = viaje || '';
                 document.getElementById('id_empleado').value = empleado || '';
                 descripcionInput.value = descripcion || '';
@@ -117,7 +235,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Formatear fecha para el input datetime-local
                 fechaHoraInput.value = fecha || '';
 
+                // Actualizar contador de caracteres
+                actualizarContadorDescripcion(descripcion.length);
+
                 mostrarBotonesActualizar();
+                
+                // Scroll al formulario
+                form.scrollIntoView({ behavior: 'smooth' });
             };
 
             if (typeof Swal !== 'undefined') {
@@ -148,7 +272,14 @@ document.addEventListener('DOMContentLoaded', function () {
         // Ajustar a la zona horaria local
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         fechaHoraInput.value = now.toISOString().slice(0, 16);
+        
+        // Actualizar contador de caracteres
+        actualizarContadorDescripcion(0);
+        
         mostrarBotonesGuardar();
+        
+        // Enfocar el primer campo después de limpiar
+        document.getElementById('id_viaje').focus();
     }
 
     function mostrarBotonesGuardar() {
@@ -175,7 +306,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (btnCancelar) btnCancelar.style.display = 'inline-block';
     }
 
-    function validarFormulario() {
+    // FUNCIÓN DE VALIDACIÓN COMPLETA DEL FORMULARIO
+    function validarFormularioCompleto() {
         const viaje = document.getElementById('id_viaje').value;
         const empleado = document.getElementById('id_empleado').value;
         const descripcion = descripcionInput.value.trim();
@@ -192,41 +324,49 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 alert(msg);
             }
+            return false;
         };
 
+        // Validar viaje
         if (!viaje) { 
-            showWarning('El viaje relacionado es requerido'); 
-            document.getElementById('id_viaje').focus(); 
-            return false; 
+            return showWarning('El viaje relacionado es requerido'); 
         }
-        if (!empleado) { 
-            showWarning('El empleado que reporta es requerido'); 
-            document.getElementById('id_empleado').focus(); 
-            return false; 
-        }
-        if (!descripcion) { 
-            showWarning('La descripción del accidente es requerida'); 
-            descripcionInput.focus(); 
-            return false; 
-        }
-        if (descripcion.length < 50) { 
-            showWarning('La descripción debe tener al menos 50 caracteres'); 
-            descripcionInput.focus(); 
-            return false; 
-        }
-        if (!fecha) { 
-            showWarning('La fecha y hora del accidente son requeridas'); 
-            fechaHoraInput.focus(); 
-            return false; 
+        if (!/^\d+$/.test(viaje)) {
+            return showWarning('El ID del viaje debe ser un número válido');
         }
 
-        // Validar que la fecha no sea en el futuro
-        const fechaSeleccionada = new Date(fecha);
-        const ahora = new Date();
-        if (fechaSeleccionada > ahora) {
-            showWarning('La fecha y hora del accidente no pueden ser en el futuro');
-            fechaHoraInput.focus();
-            return false;
+        // Validar empleado
+        if (!empleado) { 
+            return showWarning('El empleado que reporta es requerido'); 
+        }
+        if (!/^\d+$/.test(empleado)) {
+            return showWarning('El ID del empleado debe ser un número válido');
+        }
+
+        // Validar descripción
+        if (!descripcion) { 
+            return showWarning('La descripción del accidente es requerida'); 
+        }
+        
+        if (descripcion.length < 50) {
+            return showWarning('La descripción debe tener al menos 50 caracteres');
+        }
+        
+        if (descripcion.length > 2000) {
+            return showWarning('La descripción no puede exceder los 2000 caracteres');
+        }
+        
+        if (!validarDescripcion(descripcion)) {
+            return showWarning('La descripción contiene caracteres no permitidos');
+        }
+
+        // Validar fecha y hora
+        if (!fecha) { 
+            return showWarning('La fecha y hora del accidente son requeridas'); 
+        }
+        
+        if (!validarFechaHora(fecha)) {
+            return showWarning('La fecha y hora del accidente no pueden ser futuras ni mayores a 1 año atrás');
         }
 
         return true;
@@ -237,18 +377,20 @@ document.addEventListener('DOMContentLoaded', function () {
         f.addEventListener('submit', function(evt) {
             evt.preventDefault();
             const frm = this;
+            const idAccidente = this.querySelector('input[name="id_accidente"]').value;
             
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     title: '¿Eliminar reporte de accidente?',
-                    text: 'Esta acción no se puede deshacer. El reporte será eliminado permanentemente.',
+                    html: `¿Estás seguro de que deseas eliminar este reporte de accidente del sistema?<br><br>
+                          <span class="text-danger">⚠️ Esta acción no se puede deshacer y eliminará permanentemente el registro del accidente.</span>`,
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Sí, eliminar',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#dc3545',
                     cancelButtonColor: '#6c757d',
-                    dangerMode: true
+                    focusCancel: true
                 }).then((result) => {
                     if (result.isConfirmed) {
                         frm.submit();
@@ -283,11 +425,18 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch (e) { /* no bloquear la carga si falla */ }
 
     // Inicializar estado del formulario
-    mostrarBotonesGuardar();
-    // Establecer fecha y hora actual por defecto al cargar la página
-    if (fechaHoraInput) {
-        const now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        fechaHoraInput.value = now.toISOString().slice(0, 16);
+    limpiarFormulario();
+
+    // Prevenir envío de formulario con Enter en campos individuales
+    if (form) {
+        form.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const target = e.target;
+                if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
     }
 });

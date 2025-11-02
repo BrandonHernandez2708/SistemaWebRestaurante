@@ -8,6 +8,65 @@ if (!isset($_SESSION['id_usuario'])) {
     exit();
 }
 
+// Función para validar y sanitizar datos
+function validarDatosCompra($datos) {
+    $errores = [];
+    
+    // Validar ID proveedor
+    if (empty($datos['id_proveedor']) || !is_numeric($datos['id_proveedor']) || $datos['id_proveedor'] <= 0) {
+        $errores[] = "El ID del proveedor es inválido";
+    }
+    
+    // Validar fecha
+    if (empty($datos['fecha_de_compra'])) {
+        $errores[] = "La fecha de compra es requerida";
+    } else {
+        $fecha = DateTime::createFromFormat('Y-m-d', $datos['fecha_de_compra']);
+        if (!$fecha || $fecha->format('Y-m-d') !== $datos['fecha_de_compra']) {
+            $errores[] = "El formato de fecha es inválido (YYYY-MM-DD)";
+        } else {
+            // Validar que la fecha no sea futura
+            $hoy = new DateTime();
+            if ($fecha > $hoy) {
+                $errores[] = "La fecha de compra no puede ser futura";
+            }
+        }
+    }
+    
+    // Validar monto
+    if (!isset($datos['monto_total_compra_q']) || !is_numeric($datos['monto_total_compra_q'])) {
+        $errores[] = "El monto total debe ser un número válido";
+    } else if ($datos['monto_total_compra_q'] < 0) {
+        $errores[] = "El monto total no puede ser negativo";
+    } else if ($datos['monto_total_compra_q'] == 0) {
+        $errores[] = "El monto total debe ser mayor a cero";
+    }
+    
+    // Validar formato del monto (máximo 2 decimales)
+    if (isset($datos['monto_total_compra_q']) && is_numeric($datos['monto_total_compra_q'])) {
+        $partes = explode('.', (string)$datos['monto_total_compra_q']);
+        if (count($partes) > 1 && strlen($partes[1]) > 2) {
+            $errores[] = "El monto total no puede tener más de 2 decimales";
+        }
+    }
+    
+    return $errores;
+}
+
+// Función para verificar existencia del proveedor
+function verificarProveedor($id_proveedor) {
+    $conn = conectar();
+    $sql = "SELECT id_proveedor FROM proveedores WHERE id_proveedor = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_proveedor);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $existe = $result->num_rows > 0;
+    $stmt->close();
+    desconectar($conn);
+    return $existe;
+}
+
 // Procesar operaciones CRUD
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $operacion = $_POST['operacion'] ?? '';
@@ -29,9 +88,30 @@ function crearCompra() {
     global $conn;
     $conn = conectar();
     
-    $id_proveedor = $_POST['id_proveedor'] ?? '';
-    $fecha_de_compra = $_POST['fecha_de_compra'] ?? '';
-    $monto_total_compra_q = $_POST['monto_total_compra_q'] ?? 0;
+    // Validar datos
+    $errores = validarDatosCompra($_POST);
+    
+    // Verificar existencia del proveedor
+    if (empty($errores)) {
+        if (!verificarProveedor($_POST['id_proveedor'])) {
+            $errores[] = "El proveedor seleccionado no existe";
+        }
+    }
+    
+    if (!empty($errores)) {
+        $_SESSION['mensaje'] = "Errores de validación:<br>" . implode("<br>", $errores);
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: compras_mobiliario.php');
+        exit();
+    }
+    
+    $id_proveedor = intval($_POST['id_proveedor']);
+    $fecha_de_compra = $_POST['fecha_de_compra'];
+    $monto_total_compra_q = floatval($_POST['monto_total_compra_q']);
+    
+    // Redondear a 2 decimales
+    $monto_total_compra_q = round($monto_total_compra_q, 2);
     
     $sql = "INSERT INTO compras_mobiliario (id_proveedor, fecha_de_compra, monto_total_compra_q) 
             VALUES (?, ?, ?)";
@@ -57,10 +137,40 @@ function actualizarCompra() {
     global $conn;
     $conn = conectar();
     
-    $id_compra_mobiliario = $_POST['id_compra_mobiliario'] ?? '';
-    $id_proveedor = $_POST['id_proveedor'] ?? '';
-    $fecha_de_compra = $_POST['fecha_de_compra'] ?? '';
-    $monto_total_compra_q = $_POST['monto_total_compra_q'] ?? 0;
+    // Validar ID de compra
+    if (empty($_POST['id_compra_mobiliario']) || !is_numeric($_POST['id_compra_mobiliario']) || $_POST['id_compra_mobiliario'] <= 0) {
+        $_SESSION['mensaje'] = "ID de compra inválido";
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: compras_mobiliario.php');
+        exit();
+    }
+    
+    // Validar datos
+    $errores = validarDatosCompra($_POST);
+    
+    // Verificar existencia del proveedor
+    if (empty($errores)) {
+        if (!verificarProveedor($_POST['id_proveedor'])) {
+            $errores[] = "El proveedor seleccionado no existe";
+        }
+    }
+    
+    if (!empty($errores)) {
+        $_SESSION['mensaje'] = "Errores de validación:<br>" . implode("<br>", $errores);
+        $_SESSION['tipo_mensaje'] = "error";
+        desconectar($conn);
+        header('Location: compras_mobiliario.php');
+        exit();
+    }
+    
+    $id_compra_mobiliario = intval($_POST['id_compra_mobiliario']);
+    $id_proveedor = intval($_POST['id_proveedor']);
+    $fecha_de_compra = $_POST['fecha_de_compra'];
+    $monto_total_compra_q = floatval($_POST['monto_total_compra_q']);
+    
+    // Redondear a 2 decimales
+    $monto_total_compra_q = round($monto_total_compra_q, 2);
     
     $sql = "UPDATE compras_mobiliario SET id_proveedor = ?, fecha_de_compra = ?, monto_total_compra_q = ? 
             WHERE id_compra_mobiliario = ?";
@@ -89,13 +199,15 @@ function eliminarCompra() {
     $id_compra_mobiliario = $_POST['id_compra_mobiliario'] ?? '';
     
     // Validar que el ID no esté vacío
-    if (empty($id_compra_mobiliario)) {
+    if (empty($id_compra_mobiliario) || !is_numeric($id_compra_mobiliario) || $id_compra_mobiliario <= 0) {
         $_SESSION['mensaje'] = "Error: No se proporcionó un ID de compra válido.";
         $_SESSION['tipo_mensaje'] = "error";
         desconectar($conn);
         header('Location: compras_mobiliario.php');
         exit();
     }
+    
+    $id_compra_mobiliario = intval($id_compra_mobiliario);
     
     try {
         // Primero verificar si la compra existe
@@ -329,7 +441,7 @@ $proveedores = obtenerProveedores();
                 <div class="col-md-4">
                     <label class="form-label" for="monto_total_compra_q">Monto Total (Q):</label>
                     <input type="number" step="0.01" class="form-control" id="monto_total_compra_q" name="monto_total_compra_q" 
-                           min="0" required placeholder="0.00">
+                           min="0.01" required placeholder="0.00">
                 </div>
             </form>
 
