@@ -1,5 +1,5 @@
-<!--Ernesto David Samayoa Jocol 0901-22-3415-->
 <?php
+// Ernesto David Samayoa Jocol 0901-22-3415
 session_start();
 require_once '../conexion.php';
 
@@ -146,7 +146,7 @@ desconectar($conn);
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Horas Extras (Bonificaciones)</title>
+<title>Bonificaciones (Horas Extras)</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/SistemaWebRestaurante/css/bootstrap.min.css">
 <link rel="stylesheet" href="/SistemaWebRestaurante/css/diseñoModulos.css">
@@ -178,14 +178,14 @@ window.__mensaje = {
 <?php endif; ?>
 
 <section class="card shadow p-4">
-<h2 class="text-primary mb-4">Formulario de Horas Extras</h2>
+<h2 class="text-primary mb-4">Formulario de Bonificaciones (Horas Extras)</h2>
 
 <form id="form-bonificacion" method="post" class="row g-3">
     <input type="hidden" name="operacion" id="operacion" value="crear">
     <input type="hidden" name="id_bonificacion" id="id_bonificacion">
 
     <div class="col-md-4">
-        <label class="form-label">Empleado</label>
+        <label class="form-label">👤Empleado</label>
         <select name="id_empleado" id="id_empleado" class="form-select" required>
             <option value="">-- Seleccionar empleado --</option>
             <?php foreach ($empleados_map as $id => $nombre): ?>
@@ -195,27 +195,27 @@ window.__mensaje = {
     </div>
 
     <div class="col-md-4">
-        <label class="form-label">Puesto</label>
+        <label class="form-label">👔Puesto</label>
         <input type="text" class="form-control" id="puesto_empleado" readonly>
     </div>
 
     <div class="col-md-2">
-        <label class="form-label">Sueldo Base (Q)</label>
+        <label class="form-label">💰Sueldo Base (Q)</label>
         <input type="text" class="form-control" id="sueldo_base" readonly>
     </div>
 
     <div class="col-md-2">
-        <label class="form-label">Fecha</label>
+        <label class="form-label">📅Fecha</label>
         <input type="date" class="form-control" name="fecha_bonificacion" id="fecha_bonificacion" required>
     </div>
 
     <div class="col-md-2">
-        <label class="form-label">Horas Extras</label>
+        <label class="form-label">🕒Horas Extras</label>
         <input type="number" class="form-control" name="horas_extras" id="horas_extras" min="0.01" step="0.01" required>
     </div>
 
     <div class="col-md-2">
-        <label class="form-label">Pago por Hora (Q)</label>
+        <label class="form-label">💵 Pago por Hora (Q)</label>
         <input type="number" class="form-control" name="pago_por_hora" id="pago_por_hora" step="0.01" min="0.01" required>
     </div>
 
