@@ -153,7 +153,7 @@ CREATE TABLE planilla (
 ) ENGINE=InnoDB;
 
 -- =========================================================
---  SEGURIDAD Y AUDITORÍA: usuarios, aplicaciones, permisos, bitácora
+--  SEGURIDAD Y AUDITORÍA: usuarios y bitácora
 -- =========================================================
 CREATE TABLE usuarios (
   id_usuario           INT AUTO_INCREMENT PRIMARY KEY,
@@ -167,32 +167,9 @@ CREATE TABLE usuarios (
     ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
-CREATE TABLE aplicaciones (
-  id_aplicacion        INT AUTO_INCREMENT PRIMARY KEY,
-  descripcion_aplicacion VARCHAR(120) NOT NULL,
-  UNIQUE KEY uk_aplicacion_desc (descripcion_aplicacion)
-) ENGINE=InnoDB;
-
-CREATE TABLE permisos_usuario_aplicacion (
-  id_permiso           INT AUTO_INCREMENT PRIMARY KEY,
-  id_usuario           INT NOT NULL,
-  id_aplicacion        INT NOT NULL,
-  permiso_insertar     TINYINT(1) NOT NULL DEFAULT 0,
-  permiso_consultar    TINYINT(1) NOT NULL DEFAULT 1,
-  permiso_actualizar   TINYINT(1) NOT NULL DEFAULT 0,
-  permiso_eliminar     TINYINT(1) NOT NULL DEFAULT 0,
-  UNIQUE KEY uk_usr_app (id_usuario, id_aplicacion),
-  CONSTRAINT fk_pua_usr FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
-    ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fk_pua_app FOREIGN KEY (id_aplicacion) REFERENCES aplicaciones(id_aplicacion)
-    ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
-
 CREATE TABLE bitacora (
   id_bitacora          BIGINT AUTO_INCREMENT PRIMARY KEY,
   id_usuario           INT,
-  id_cliente           INT,
-  id_reservacion       INT,
   ip                   VARCHAR(64),
   pc                   VARCHAR(100),
   operacion_realizada  VARCHAR(200) NOT NULL,

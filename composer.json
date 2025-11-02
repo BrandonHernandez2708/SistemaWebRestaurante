@@ -1,0 +1,15 @@
+{
+    "name": "kenph/sistema-web-restaurante",
+    "autoload": {
+        "psr-4": {
+            "Kenph\\SistemaWebRestaurante\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Kenph-Ansonny",
+            "email": "ansonny54@gmail.com"
+        }
+    ],
+    "require": {}
+}

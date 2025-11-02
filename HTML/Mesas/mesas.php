@@ -24,9 +24,15 @@
 <header class="mb-4">
   <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
     <h1 class="mb-0">🍽️ Marea Roja | Gestión de Mesas</h1>
-    <ul class="nav nav-pills gap-2 mb-0">
-      <li class="nav-item"><a href="menu_empleados.php" class="nav-link">Regresar</a></li>
-    </ul>
+    <ul class="nav nav-pills gap-3 mb-0">
+      <li class="nav-item">
+        <a href="../menu_empleados.php" class="btn btn-dorado">Regresar</a>
+      </li>
+      <li class="nav-item">
+        <a href="../Reservaciones/reservaciones.php" class="btn btn-dorado">📅 Reservaciones</a>
+      </li>
+  </ul>
+
   </div>
 </header>
 
