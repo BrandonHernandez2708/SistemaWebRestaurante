@@ -85,7 +85,7 @@
             </li>
 
             <li>
-                <a href="#" class="submenu-toggle"><span>⚙️</span> Taller de vechiculos</a>
+                <a href="#" class="submenu-toggle"><span>⚙️</span> Taller de vehiculos</a>
                 <ul class="submenu">
                     <li><a href="#" class="consulta-only" data-href="../HTML/taller_de_vehiculos/taller_vehiculos.php">Taller</a></li>
                 </ul>
@@ -121,12 +121,13 @@
                 </ul>
             </li>
 
-            <li>
-                <a href="#" class="submenu-toggle"><span>💰</span> Facturaciones</a>
-                <ul class="submenu">
-                    <li><a href="#" class="consulta-only" data-href="Facturacion_Ventas.html">Nueva Factura</a></li>
-                </ul>
-            </li>
+  <li>
+    <a href="#" class="submenu-toggle"><span>💰</span> Facturaciones</a>
+    <ul class="submenu">
+       
+        <li><a href="Reporte_Facturacion/Reporte_Facturacion.php">Reportes de Facturación</a></li>
+    </ul>
+</li>
        
 
                 <li>
