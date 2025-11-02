@@ -2,6 +2,7 @@
 // Ernesto David Samayoa Jocol 0901-22-3415
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 
 // Obtener puesto y sueldo base por empleado
@@ -61,8 +62,19 @@ function crearBonificacion() {
     $stmt->bind_param('isdd', $id_empleado, $fecha, $horas, $pago);
     $stmt->execute();
 
-    $_SESSION['mensaje'] = $stmt->affected_rows > 0 ? 'Horas extras registradas correctamente.' : 'Error al registrar.';
-    $_SESSION['tipo_mensaje'] = $stmt->affected_rows > 0 ? 'success' : 'error';
+    if ($stmt->affected_rows > 0) {
+        registrarBitacora(
+            $conn,
+            'Bonificaciones',
+            'insertar',
+            "Horas extras registradas (Empleado ID: $id_empleado, Fecha: $fecha, Horas: $horas, PagoHora: $pago)"
+        );
+        $_SESSION['mensaje'] = 'Horas extras registradas correctamente.';
+        $_SESSION['tipo_mensaje'] = 'success';
+    } else {
+        $_SESSION['mensaje'] = 'Error al registrar.';
+        $_SESSION['tipo_mensaje'] = 'error';
+    }
 
     $stmt->close();
     desconectar($conn);
@@ -94,6 +106,12 @@ function actualizarBonificacion() {
     $stmt->execute();
 
     if ($stmt->affected_rows > 0) {
+        registrarBitacora(
+            $conn,
+            'Bonificaciones',
+            'Actualizar',
+            "Bonificación actualizada (ID: $id_bonificacion, Empleado ID: $id_empleado, Fecha: $fecha, Horas: $horas, PagoHora: $pago)"
+        );
         $_SESSION['mensaje'] = 'Registro actualizado correctamente.';
         $_SESSION['tipo_mensaje'] = 'success';
     } else {
@@ -115,8 +133,19 @@ function eliminarBonificacion() {
     $stmt->bind_param('i', $id_bonificacion);
     $stmt->execute();
 
-    $_SESSION['mensaje'] = $stmt->affected_rows > 0 ? 'Registro eliminado correctamente.' : 'Error al eliminar.';
-    $_SESSION['tipo_mensaje'] = $stmt->affected_rows > 0 ? 'success' : 'error';
+    if ($stmt->affected_rows > 0) {
+        registrarBitacora(
+            $conn,
+            'Bonificaciones',
+            'Eliminar',
+            "Bonificación eliminada (ID: $id_bonificacion)"
+        );
+        $_SESSION['mensaje'] = 'Registro eliminado correctamente.';
+        $_SESSION['tipo_mensaje'] = 'success';
+    } else {
+        $_SESSION['mensaje'] = 'Error al eliminar.';
+        $_SESSION['tipo_mensaje'] = 'error';
+    }
 
     $stmt->close();
     desconectar($conn);

@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 if (!isset($_SESSION['id_usuario'])) {
     header('Location: ../login.php');
@@ -132,6 +133,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
             $up->bind_param('idi', $total_empleados, $total_general, $id_planilla);
             $up->execute();
             $up->close();
+
+      // Registrar en bitácora la generación de planilla
+      registrarBitacora(
+        $conn,
+        'Planilla',
+        'insertar',
+        'Planilla generada (Mes: ' . mes_nombre($mes) . ', Año: ' . $anio . ', Empleados: ' . $total_empleados . ', Total: Q' . number_format($total_general,2) . ', Fecha generación: ' . $fechaGen . ')'
+      );
 
       $_SESSION['mensaje'] = 'Planilla general ' . mes_nombre($mes) . ' ' . $anio . ' guardada correctamente.';
       $_SESSION['tipo_mensaje'] = 'success';

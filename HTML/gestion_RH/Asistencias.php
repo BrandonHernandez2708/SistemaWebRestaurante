@@ -2,6 +2,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
@@ -47,6 +48,14 @@ function crearAsistencia() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Asistencias',
+            'insertar',
+            "Asistencia registrada (Fecha: $fecha, Entrada: $entrada, Salida: $salida, Empleado ID: $id_empleado)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Asistencia registrada exitosamente.' : 'Error al registrar la asistencia.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'error';
 
@@ -77,6 +86,14 @@ function actualizarAsistencia() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Asistencias',
+            'Actualizar',
+            "Asistencia actualizada (ID: $id_asistencia, Fecha: $fecha, Entrada: $entrada, Salida: $salida, Empleado ID: $id_empleado)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Asistencia actualizada correctamente.' : 'No se realizaron cambios.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'warning';
 
@@ -93,8 +110,19 @@ function eliminarAsistencia() {
     $stmt->bind_param('i', $id_asistencia);
     $stmt->execute();
 
-    $_SESSION['mensaje'] = $stmt->affected_rows > 0 ? 'Asistencia eliminada exitosamente.' : 'Error al eliminar asistencia.';
-    $_SESSION['tipo_mensaje'] = $stmt->affected_rows > 0 ? 'success' : 'error';
+    if ($stmt->affected_rows > 0) {
+        registrarBitacora(
+            $conn,
+            'Asistencias',
+            'Eliminar',
+            "Asistencia eliminada (ID: $id_asistencia)"
+        );
+        $_SESSION['mensaje'] = 'Asistencia eliminada exitosamente.';
+        $_SESSION['tipo_mensaje'] = 'success';
+    } else {
+        $_SESSION['mensaje'] = 'Error al eliminar asistencia.';
+        $_SESSION['tipo_mensaje'] = 'error';
+    }
 
     $stmt->close();
     desconectar($conn);

@@ -2,6 +2,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
@@ -54,6 +55,14 @@ function crearTelefono() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Teléfonos de Empleados',
+            'insertar',
+            "Registro insertado (Empleado ID: $id_empleado, Teléfono: $numero_telefono)"
+        );
+    }
     $message = $success ? 'Teléfono registrado exitosamente.' : 'Error al registrar teléfono.';
     $tipo = $success ? 'success' : 'error';
 
@@ -92,6 +101,14 @@ function actualizarTelefono() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Teléfonos de Empleados',
+            'Actualizar',
+            "Registro actualizado (ID Teléfono: $id_telefono, Empleado ID: $id_empleado, Teléfono: $numero_telefono)"
+        );
+    }
     $message = $success ? 'Teléfono actualizado exitosamente.' : 'No se realizaron cambios.';
     $tipo = $success ? 'success' : 'warning';
 
@@ -112,8 +129,19 @@ function eliminarTelefono() {
     $stmt->bind_param('i', $id_telefono);
     $stmt->execute();
 
-    $_SESSION['mensaje'] = $stmt->affected_rows > 0 ? 'Teléfono eliminado exitosamente.' : 'Error al eliminar teléfono.';
-    $_SESSION['tipo_mensaje'] = $stmt->affected_rows > 0 ? 'success' : 'error';
+    if ($stmt->affected_rows > 0) {
+        registrarBitacora(
+            $conn,
+            'Teléfonos de Empleados',
+            'Eliminar',
+            "Registro eliminado (ID Teléfono: $id_telefono)"
+        );
+        $_SESSION['mensaje'] = 'Teléfono eliminado exitosamente.';
+        $_SESSION['tipo_mensaje'] = 'success';
+    } else {
+        $_SESSION['mensaje'] = 'Error al eliminar teléfono.';
+        $_SESSION['tipo_mensaje'] = 'error';
+    }
 
     $stmt->close();
     desconectar($conn);
