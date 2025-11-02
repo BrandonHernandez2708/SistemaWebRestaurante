@@ -1,3 +1,4 @@
+<!--Ernesto David Samayoa Jocol 0901-22-3415-->
 <?php
 session_start();
 require_once '../conexion.php';
@@ -25,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ---------------------- FUNCIONES CRUD ----------------------
-
 function crearSucursal() {
     $conn = conectar();
     $direccion = trim($_POST['direccion_sucursal'] ?? '');
@@ -152,13 +152,12 @@ function obtenerSucursales() {
     return $data;
 }
 
-// Formatear hora a 12h con am/pm (ej: 9:00 am)
+// Formatear hora a 12h con am/pm 
 function format_time($timeStr) {
     if (empty($timeStr)) return '';
     // Intentar parsear con strtotime; si falla devolver original sin segundos
     $ts = strtotime($timeStr);
     if ($ts === false) {
-        // intentar recortar segundos si vienen en formato HH:MM:SS
         $parts = explode(':', $timeStr);
         if (count($parts) >= 2) {
             return ltrim($parts[0], '0') . ':' . $parts[1];
@@ -184,7 +183,7 @@ desconectar($conn);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Sucursales</title>
+    <title>Sucursales</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/SistemaWebRestaurante/css/bootstrap.min.css">
     <link rel="stylesheet" href="/SistemaWebRestaurante/css/diseñoModulos.css">
@@ -192,9 +191,13 @@ desconectar($conn);
 <body>
 <header class="mb-4">
     <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
-        <h1 class="mb-0">Gestión de Sucursales</h1>
+        <h1 class="mb-0">Gestión Departamental</h1>
         <ul class="nav nav-pills gap-2 mb-0">
-            <li class="nav-item"><a href="../menu_empleados.php" class="nav-link">Regresar al Menú</a></li>
+            <li class="nav-item">
+                <a href="../menu_empleados.php" class="btn-back" aria-label="Regresar al menú principal">
+                    <span class="arrow">←</span><span>Regresar al Menú</span>
+                </a>
+            </li>
         </ul>
     </div>
 </header>

@@ -1,3 +1,4 @@
+<!--Ernesto David Samayoa Jocol 0901-22-3415-->
 <?php
 session_start();
 require_once '../conexion.php';
@@ -25,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ---------------------- FUNCIONES CRUD ----------------------
-
 function crearPuesto() {
     $conn = conectar();
     $puesto = trim($_POST['puesto'] ?? '');
@@ -85,7 +85,6 @@ function actualizarPuesto() {
         exit();
     }
 
-    // Normalizar y validar el nombre del puesto
     $puesto = normalize_name($puesto);
     if (!is_valid_name($puesto)) {
         $_SESSION['mensaje'] = 'El nombre del puesto sólo debe contener letras y espacios.';
@@ -144,7 +143,6 @@ function obtenerPuestos() {
     return $data;
 }
 
-// ---------------------- Normalización y validación de nombres (copiado desde Empleados.php)
 function normalize_name($s) {
     $s = isset($s) ? (string)$s : '';
     // permitir letras latinas con tildes, Ñ y espacios
@@ -186,7 +184,7 @@ $puestos = obtenerPuestos();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Puestos</title>
+    <title>Puestos</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/SistemaWebRestaurante/css/bootstrap.min.css">
     <link rel="stylesheet" href="/SistemaWebRestaurante/css/diseñoModulos.css">
@@ -194,9 +192,13 @@ $puestos = obtenerPuestos();
 <body>
 <header class="mb-4">
     <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
-        <h1 class="mb-0">Gestión de Puestos</h1>
+        <h1 class="mb-0">Recursos Humanos RH</h1>
         <ul class="nav nav-pills gap-2 mb-0">
-            <li class="nav-item"><a href="../menu_empleados.php" class="nav-link">Regresar al Menú</a></li>
+            <li class="nav-item">
+                <a href="../menu_empleados.php" class="btn-back" aria-label="Regresar al menú principal">
+                    <span class="arrow">←</span><span>Regresar al Menú</span>
+                </a>
+            </li>
         </ul>
     </div>
 </header>
@@ -220,17 +222,17 @@ $puestos = obtenerPuestos();
             <input type="hidden" name="id_puesto" id="id_puesto">
 
             <div class="col-md-4">
-                <label class="form-label">Nombre del Puesto:</label>
+                <label class="form-label">🧑‍💼Nombre del Puesto:</label>
                 <input type="text" class="form-control" name="puesto" id="puesto" required placeholder="Ej: Gerente de General">
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Descripción:</label>
+                <label class="form-label"> 📝Descripción:</label>
                 <input type="text" class="form-control" name="descripcion" id="descripcion" required placeholder="Ej: Supervisa todas las operaciones del restaurante..">
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">Sueldo Base:</label>
+                <label class="form-label">💰Sueldo Base:</label>
                 <input type="number" class="form-control" name="sueldo_base" id="sueldo_base" required placeholder="Ej: 5,000.00">
             </div>
 

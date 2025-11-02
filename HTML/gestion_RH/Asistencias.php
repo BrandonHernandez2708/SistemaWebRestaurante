@@ -1,3 +1,4 @@
+<!--Ernesto David Samayoa Jocol 0901-22-3415-->
 <?php
 session_start();
 require_once '../conexion.php';
@@ -25,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ---------------------- FUNCIONES CRUD ----------------------
-
 function crearAsistencia() {
     $conn = conectar();
     $fecha = $_POST['fecha_asistencia'] ?? '';
@@ -118,7 +118,7 @@ function obtenerAsistencias() {
     return $data;
 }
 
-// Formatear hora a 12h con am/pm (ej: 9:00 am)
+// Formatear hora a 12h con am/pm 
 function format_time($timeStr) {
     if (empty($timeStr)) return '';
     $ts = strtotime($timeStr);
@@ -135,7 +135,7 @@ function format_time($timeStr) {
     return date('g:i a', $ts);
 }
 
-// Formatear fecha a d/m/Y (ej: 31/10/2025)
+// Formatear fecha a d/m/Y 
 function format_date($dateStr) {
     if (empty($dateStr)) return '';
     $ts = strtotime($dateStr);
@@ -159,7 +159,7 @@ desconectar($conn);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Asistencias</title>
+    <title>Asistencias</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/SistemaWebRestaurante/css/bootstrap.min.css">
     <link rel="stylesheet" href="/SistemaWebRestaurante/css/diseñoModulos.css">
@@ -167,9 +167,13 @@ desconectar($conn);
 <body>
 <header class="mb-4">
     <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
-        <h1 class="mb-0">Gestión de Asistencias</h1>
+        <h1 class="mb-0">Recursos Humanos RH</h1>
         <ul class="nav nav-pills gap-2 mb-0">
-            <li class="nav-item"><a href="../menu_empleados.php" class="nav-link">Regresar al Menú</a></li>
+            <li class="nav-item">
+                <a href="../menu_empleados.php" class="btn-back" aria-label="Regresar al menú principal">
+                    <span class="arrow">←</span><span>Regresar al Menú</span>
+                </a>
+            </li>
         </ul>
     </div>
 </header>
@@ -193,22 +197,22 @@ desconectar($conn);
             <input type="hidden" name="id_asistencia" id="id_asistencia">
 
             <div class="col-md-3">
-                <label class="form-label">Fecha de Asistencia</label>
+                <label class="form-label"> 🗓️Fecha de Asistencia</label>
                 <input type="date" class="form-control" name="fecha_asistencia" id="fecha_asistencia" required>
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">Hora de Entrada</label>
+                <label class="form-label">⏰Hora de Entrada</label>
                 <input type="time" class="form-control" name="hora_entrada" id="hora_entrada">
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">Hora de Salida</label>
+                <label class="form-label">⏰Hora de Salida</label>
                 <input type="time" class="form-control" name="hora_salida" id="hora_salida">
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">Empleado</label>
+                <label class="form-label"> 👤Empleado</label>
                 <select class="form-select" name="id_empleado" id="id_empleado" required>
                     <option value="">-- Seleccione empleado --</option>
                     <?php foreach ($empleados_map as $id => $nombre): ?>
