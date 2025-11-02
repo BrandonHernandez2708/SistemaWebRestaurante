@@ -2,6 +2,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar sesión activa
 if (!isset($_SESSION['id_usuario'])) {
@@ -54,6 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ok = $stmt->execute();
         $stmt->close();
 
+        if ($ok) {
+            $accion = ($operacion === 'crear') ? 'insertar' : 'Actualizar';
+            $detalle = ($operacion === 'crear')
+                ? "Asignación creada (Empleado ID: $id_empleado, Sucursal ID: $id_sucursal, Fecha: $fecha_asignacion)"
+                : "Asignación actualizada (Asignación ID: " . intval($_POST['id_asignacion'] ?? 0) . ", Sucursal ID: $id_sucursal, Fecha: $fecha_asignacion)";
+            registrarBitacora($conn, 'Empleado Sucursal', $accion, $detalle);
+        }
+
         $_SESSION['mensaje'] = $ok ? 'Asignación guardada correctamente.' : 'Error al guardar la asignación.';
         $_SESSION['tipo_mensaje'] = $ok ? 'success' : 'error';
         header('Location: Empleados_Sucursal.php');
@@ -67,6 +76,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $ok = $stmt->affected_rows > 0;
         $stmt->close();
+
+        if ($ok) {
+            registrarBitacora(
+                $conn,
+                'Empleado Sucursal',
+                'Eliminar',
+                "Asignación eliminada (Asignación ID: $id_asignacion)"
+            );
+        }
 
         $_SESSION['mensaje'] = $ok ? 'Asignación eliminada correctamente.' : 'Error al eliminar.';
         $_SESSION['tipo_mensaje'] = $ok ? 'success' : 'error';

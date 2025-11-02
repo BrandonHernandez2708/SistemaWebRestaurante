@@ -144,6 +144,7 @@ CREATE TABLE planilla (
   id_planilla          INT AUTO_INCREMENT PRIMARY KEY,
   id_empleado          INT NOT NULL,
   bonificacion_total_q DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  bonificacion_por_hora_q DECIMAL(12,2) NOT NULL DEFAULT 0.00,
   penalizacion_total_q DECIMAL(12,2) NOT NULL DEFAULT 0.00,
   sueldo_total_q       DECIMAL(12,2) NOT NULL DEFAULT 0.00,
   periodo              VARCHAR(20) NOT NULL, -- p.ej. 2025-10

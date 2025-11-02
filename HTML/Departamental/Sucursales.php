@@ -2,6 +2,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
@@ -65,6 +66,14 @@ function crearSucursal() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Sucursales',
+            'insertar',
+            "Sucursal creada (Dirección: $direccion, Apertura: $apertura, Cierre: $cierre, Capacidad: $capacidad, Teléfono: $telefono, Correo: $correo, Departamento: $id_departamento)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Sucursal creada exitosamente.' : 'Error al crear la sucursal.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'error';
 
@@ -112,6 +121,14 @@ function actualizarSucursal() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Sucursales',
+            'Actualizar',
+            "Sucursal actualizada (ID: $id_sucursal, Dirección: $direccion, Apertura: $apertura, Cierre: $cierre, Capacidad: $capacidad, Teléfono: $telefono, Correo: $correo, Departamento: $id_departamento)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Sucursal actualizada exitosamente.' : 'No se realizaron cambios.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'warning';
 
@@ -128,8 +145,19 @@ function eliminarSucursal() {
     $stmt->bind_param('i', $id_sucursal);
     $stmt->execute();
 
-    $_SESSION['mensaje'] = $stmt->affected_rows > 0 ? 'Sucursal eliminada exitosamente.' : 'Error al eliminar la sucursal.';
-    $_SESSION['tipo_mensaje'] = $stmt->affected_rows > 0 ? 'success' : 'error';
+    if ($stmt->affected_rows > 0) {
+        registrarBitacora(
+            $conn,
+            'Sucursales',
+            'Eliminar',
+            "Sucursal eliminada (ID: $id_sucursal)"
+        );
+        $_SESSION['mensaje'] = 'Sucursal eliminada exitosamente.';
+        $_SESSION['tipo_mensaje'] = 'success';
+    } else {
+        $_SESSION['mensaje'] = 'Error al eliminar la sucursal.';
+        $_SESSION['tipo_mensaje'] = 'error';
+    }
 
     $stmt->close();
     desconectar($conn);

@@ -2,6 +2,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
@@ -54,6 +55,14 @@ function crearCorreo() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Correos de Empleados',
+            'insertar',
+            "Registro insertado (Empleado ID: $id_empleado, Correo: $direccion_correo)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Correo registrado exitosamente.' : 'Error al registrar correo.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'error';
 
@@ -89,6 +98,14 @@ function actualizarCorreo() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Correos de Empleados',
+            'Actualizar',
+            "Registro actualizado (ID Correo: $id_correo, Empleado ID: $id_empleado, Correo: $direccion_correo)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Correo actualizado exitosamente.' : 'No se realizaron cambios.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'warning';
 
@@ -106,8 +123,19 @@ function eliminarCorreo() {
     $stmt->bind_param('i', $id_correo);
     $stmt->execute();
 
-    $_SESSION['mensaje'] = $stmt->affected_rows > 0 ? 'Correo eliminado exitosamente.' : 'Error al eliminar correo.';
-    $_SESSION['tipo_mensaje'] = $stmt->affected_rows > 0 ? 'success' : 'error';
+    if ($stmt->affected_rows > 0) {
+        registrarBitacora(
+            $conn,
+            'Correos de Empleados',
+            'Eliminar',
+            "Registro eliminado (ID Correo: $id_correo)"
+        );
+        $_SESSION['mensaje'] = 'Correo eliminado exitosamente.';
+        $_SESSION['tipo_mensaje'] = 'success';
+    } else {
+        $_SESSION['mensaje'] = 'Error al eliminar correo.';
+        $_SESSION['tipo_mensaje'] = 'error';
+    }
 
     $stmt->close();
     desconectar($conn);

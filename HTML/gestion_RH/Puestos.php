@@ -2,6 +2,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
@@ -62,6 +63,14 @@ function crearPuesto() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Puestos',
+            'insertar',
+            "Puesto creado (Nombre: $puesto, Sueldo: $sueldo)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Puesto creado exitosamente.' : 'Error al crear el puesto.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'error';
 
@@ -106,6 +115,14 @@ function actualizarPuesto() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Puestos',
+            'Actualizar',
+            "Puesto actualizado (ID: $id_puesto, Nombre: $puesto, Sueldo: $sueldo)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Puesto actualizado correctamente.' : 'No se realizaron cambios.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'warning';
 
@@ -122,8 +139,19 @@ function eliminarPuesto() {
     $stmt->bind_param('i', $id_puesto);
     $stmt->execute();
 
-    $_SESSION['mensaje'] = $stmt->affected_rows > 0 ? 'Puesto eliminado exitosamente.' : 'Error al eliminar el puesto.';
-    $_SESSION['tipo_mensaje'] = $stmt->affected_rows > 0 ? 'success' : 'error';
+    if ($stmt->affected_rows > 0) {
+        registrarBitacora(
+            $conn,
+            'Puestos',
+            'Eliminar',
+            "Puesto eliminado (ID: $id_puesto)"
+        );
+        $_SESSION['mensaje'] = 'Puesto eliminado exitosamente.';
+        $_SESSION['tipo_mensaje'] = 'success';
+    } else {
+        $_SESSION['mensaje'] = 'Error al eliminar el puesto.';
+        $_SESSION['tipo_mensaje'] = 'error';
+    }
 
     $stmt->close();
     desconectar($conn);

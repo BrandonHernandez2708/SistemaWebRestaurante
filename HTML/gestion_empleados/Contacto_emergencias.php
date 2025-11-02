@@ -2,6 +2,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
@@ -74,6 +75,14 @@ function crearContacto() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Contactos de Emergencia',
+            'insertar',
+            "Registro insertado (Empleado ID: $id_empleado, Nombre: $nombre, Relación: $relacion, Teléfono: $telefono)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Contacto de emergencia agregado exitosamente.' : 'Error al agregar el contacto.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'error';
 
@@ -130,6 +139,14 @@ function actualizarContacto() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Contactos de Emergencia',
+            'Actualizar',
+            "Registro actualizado (ID Contacto: $id_contacto, Nombre: $nombre, Relación: $relacion, Teléfono: $telefono)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Contacto de emergencia actualizado correctamente.' : 'No se realizaron cambios.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'warning';
 
@@ -146,8 +163,19 @@ function eliminarContacto() {
     $stmt->bind_param('i', $id_contacto);
     $stmt->execute();
 
-    $_SESSION['mensaje'] = $stmt->affected_rows > 0 ? 'Contacto eliminado exitosamente.' : 'Error al eliminar el contacto.';
-    $_SESSION['tipo_mensaje'] = $stmt->affected_rows > 0 ? 'success' : 'error';
+    if ($stmt->affected_rows > 0) {
+        registrarBitacora(
+            $conn,
+            'Contactos de Emergencia',
+            'Eliminar',
+            "Registro eliminado (ID Contacto: $id_contacto)"
+        );
+        $_SESSION['mensaje'] = 'Contacto eliminado exitosamente.';
+        $_SESSION['tipo_mensaje'] = 'success';
+    } else {
+        $_SESSION['mensaje'] = 'Error al eliminar el contacto.';
+        $_SESSION['tipo_mensaje'] = 'error';
+    }
 
     $stmt->close();
     desconectar($conn);
