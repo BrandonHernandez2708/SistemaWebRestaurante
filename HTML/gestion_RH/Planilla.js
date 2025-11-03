@@ -75,25 +75,6 @@ document.addEventListener('DOMContentLoaded', function () {
   // inicializar
   syncHidden();
 
-  if (btnNuevo) {
-    btnNuevo.addEventListener('click', function(){
-      try {
-        const now = new Date();
-        const month = now.getMonth() + 1; // 1-12
-        const year = now.getFullYear();
-        if (mesSelect) mesSelect.value = String(month);
-        if (anioInput) anioInput.value = String(year);
-        if (fechaGenEl) {
-          const y = year.toString().padStart(4,'0');
-          const m = String(month).padStart(2,'0');
-          const d = String(now.getDate()).padStart(2,'0');
-          fechaGenEl.value = `${y}-${m}-${d}`;
-        }
-        syncHidden();
-      } catch(e){}
-    });
-  }
-
   // Exportaciones en Detalle de Planilla PDF/EXCEl
   const btnPdf = document.getElementById('btn-pdf');
   if (btnPdf) {

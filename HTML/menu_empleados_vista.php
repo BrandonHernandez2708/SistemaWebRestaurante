@@ -44,14 +44,6 @@
             </li>
 
             <li>
-                <a href="#" class="submenu-toggle"><span>👥</span> Gestión de Empleados</a>
-                <ul class="submenu">
-                    <li><a href="#" class="consulta-only" data-href="gestion_empleados/Empleados.php">Empleados</a></li>
-
-                </ul>
-            </li>
-
-            <li>
                 <a href="#" class="submenu-toggle"><span>🖥️</span> Recursos Humanos RH</a>
                 <ul class="submenu">
                     <li><a href="gestion_RH/Planilla.php">Planilla</a></li>

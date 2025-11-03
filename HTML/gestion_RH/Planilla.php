@@ -228,7 +228,6 @@ $filtro_activo = false;
 
       <div class="col-12 mt-3">
         <div class="d-flex gap-2">
-          <button id="btn-nuevo" type="button" class="btn btn-secondary">Nuevo</button>
           <button id="btn-guardar" type="submit" class="btn btn-success" data-con-filtro="<?= $filtro_activo ? '1':'0' ?>">Guardar</button>
         </div>
       </div>

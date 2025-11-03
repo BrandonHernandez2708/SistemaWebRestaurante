@@ -100,11 +100,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ---------- Botones ----------
-    btnNuevo?.addEventListener('click', function () {
-        limpiarFormulario();
-        habilitarCampos();
-        mostrarBotonesGuardar();
-    });
 
     btnGuardar?.addEventListener('click', function (evt) {
         evt.preventDefault();

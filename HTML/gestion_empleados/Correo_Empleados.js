@@ -79,11 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ---------- Botones ----------
-    if (btnNuevo) btnNuevo.addEventListener('click', function () {
-        limpiarFormulario();
-        habilitarCampos();
-        mostrarBotonesGuardar();
-    });
+    // Botón "Nuevo" eliminado de la interfaz
 
     if (btnGuardar) btnGuardar.addEventListener('click', function (evt) {
         if (evt && typeof evt.preventDefault === 'function') evt.preventDefault();

@@ -82,7 +82,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    btnNuevo.addEventListener('click', limpiar);
     btnCancelar.addEventListener('click', limpiar);
 
     // --- Mensaje del servidor ---

@@ -92,12 +92,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	if (horasInput) horasInput.addEventListener('input', calcularTotal);
 	if (pagoInput) pagoInput.addEventListener('input', calcularTotal);
 
-	if (btnNuevo) btnNuevo.addEventListener('click', function () {
-		limpiarFormulario();
-		habilitarCampos();
-		mostrarBotonesGuardar();
-	});
-
+	// ---------- Botones ----------
 	if (btnGuardar) btnGuardar.addEventListener('click', function (e) {
 		if (!form) return console.warn('Formulario no encontrado');
 		e.preventDefault();
