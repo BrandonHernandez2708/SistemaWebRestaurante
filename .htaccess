@@ -1,0 +1,56 @@
+# ===============================================
+# 🌐 Configuración principal para Restaurante Marea Roja
+# ===============================================
+
+# Definir el archivo principal
+DirectoryIndex index.php
+
+# Activar motor de reescritura de URLs
+RewriteEngine On
+
+# ===============================================
+# 🔐 Redirigir a HTTPS (Render, Hostinger, etc.)
+# ===============================================
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ===============================================
+# 🚫 Proteger carpetas internas (no accesibles por el navegador)
+# ===============================================
+# Evita acceso directo a archivos de configuración o includes
+RewriteRule ^(includes|conexion|config|logs|temp)/ - [F,L,NC]
+
+# ===============================================
+# 🚪 Redirección automática al login si no hay sesión iniciada
+# ===============================================
+# NOTA: Esto requiere que cada archivo PHP use session_start() y $_SESSION['id_usuario']
+# Si el usuario no tiene sesión, redirige a login.php
+RewriteCond %{REQUEST_URI} !^/login\.php$
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{REQUEST_URI} !^/css/
+RewriteCond %{REQUEST_URI} !^/js/
+RewriteCond %{REQUEST_URI} !^/images/
+RewriteCond %{HTTP_COOKIE} !PHPSESSID
+RewriteRule ^(modulos|reportes|inventario|compras|empleados|usuarios) /login.php [R=302,L]
+
+# ===============================================
+# 🧭 URLs limpias (sin .php)
+# ===============================================
+# Permite usar rutas tipo /menu en lugar de /menu.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-zA-Z0-9_-]+)/?$ $1.php [L,QSA]
+
+# ===============================================
+# 🪄 Reescritura general hacia index.php (para controladores)
+# ===============================================
+# Si usas MVC o enrutador central (index.php?url=...)
+# Descomenta las siguientes líneas:
+# RewriteCond %{REQUEST_FILENAME} !-f
+# RewriteCond %{REQUEST_FILENAME} !-d
+# RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+
+# ===============================================
+# ✅ Evitar listar directorios
+# ===============================================
+Options -Indexes
