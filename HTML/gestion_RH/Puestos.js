@@ -100,7 +100,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ---------- Botones ----------
-
     btnGuardar?.addEventListener('click', function (evt) {
         evt.preventDefault();
         if (!form) return;

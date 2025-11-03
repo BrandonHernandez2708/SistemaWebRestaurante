@@ -152,8 +152,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ---------- Botones ----------
-    // Botón "Nuevo" eliminado de la interfaz
-
     btnGuardar?.addEventListener('click', function (evt) {
         evt.preventDefault();
         if (!form) return;

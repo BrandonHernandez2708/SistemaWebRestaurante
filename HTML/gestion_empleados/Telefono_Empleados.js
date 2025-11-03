@@ -113,8 +113,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ---------- Botones ----------
-    // Botón "Nuevo" eliminado de la interfaz
-
     if (btnGuardar) btnGuardar.addEventListener('click', function (evt) {
         // Evitar el submit por defecto para mostrar primero la confirmación (SweetAlert)
         if (evt && typeof evt.preventDefault === 'function') evt.preventDefault();

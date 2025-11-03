@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Botones
+  // ---------- Botones ----------
     if (btnGuardar) btnGuardar.addEventListener('click', function () {
         if (!form) return console.warn('Formulario no encontrado');
         if (validarFormulario()) {
