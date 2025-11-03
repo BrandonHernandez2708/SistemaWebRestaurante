@@ -2,6 +2,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
@@ -98,6 +99,15 @@ function crearEmpleado() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        // Registrar en bitácora
+        registrarBitacora(
+            $conn,
+            'Empleados',
+            'insertar',
+            "Registro insertado (DPI: $dpi, Nombre: $nombre, Apellido: $apellido, Departamento: $id_departamento, Puesto: $id_puesto)"
+        );
+    }
     $message = $success ? 'Empleado creado exitosamente' : 'Error al crear empleado: ' . $stmt->error;
     $tipo = $success ? 'success' : 'error';
     $new_id = $stmt->insert_id;
@@ -182,6 +192,15 @@ function actualizarEmpleado() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        // Registrar en bitácora
+        registrarBitacora(
+            $conn,
+            'Empleados',
+            'Actualizar',
+            "Registro actualizado (ID: $id_empleado, DPI: $dpi, Nombre: $nombre, Apellido: $apellido, Departamento: $id_departamento, Puesto: $id_puesto)"
+        );
+    }
     $message = $success ? 'Empleado actualizado exitosamente' : 'Error al actualizar empleado: ' . $stmt->error;
     $tipo = $success ? 'success' : 'error';
 
@@ -248,6 +267,13 @@ function eliminarEmpleado() {
         $conn->commit();
 
         if ($affected > 0) {
+            // Registrar en bitácora
+            registrarBitacora(
+                $conn,
+                'Empleados',
+                'Eliminar',
+                "Registro eliminado (ID: $id_empleado)"
+            );
             $_SESSION['mensaje'] = 'Empleado eliminado exitosamente.';
             $_SESSION['tipo_mensaje'] = 'success';
         } else {

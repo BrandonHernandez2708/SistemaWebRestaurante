@@ -2,6 +2,7 @@
 <?php
 session_start();
 require_once '../conexion.php';
+require_once '../funciones_globales.php';
 
 // Verificar si el usuario está logueado
 if (!isset($_SESSION['id_usuario'])) {
@@ -54,6 +55,14 @@ function crearPenalizacion() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Penalizaciones',
+            'insertar',
+            "Penalización registrada (Empleado ID: $id_empleado, Fecha: $fecha, Descuento: $descuento)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Penalización registrada exitosamente.' : 'Error al registrar penalización.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'error';
 
@@ -93,6 +102,14 @@ function actualizarPenalizacion() {
     $stmt->execute();
 
     $success = $stmt->affected_rows > 0;
+    if ($success) {
+        registrarBitacora(
+            $conn,
+            'Penalizaciones',
+            'Actualizar',
+            "Penalización actualizada (ID: $id_penalizacion, Empleado ID: $id_empleado, Fecha: $fecha, Descuento: $descuento)"
+        );
+    }
     $_SESSION['mensaje'] = $success ? 'Penalización actualizada correctamente.' : 'No se realizaron cambios.';
     $_SESSION['tipo_mensaje'] = $success ? 'success' : 'warning';
 
@@ -109,8 +126,19 @@ function eliminarPenalizacion() {
     $stmt->bind_param('i', $id_penalizacion);
     $stmt->execute();
 
-    $_SESSION['mensaje'] = $stmt->affected_rows > 0 ? 'Penalización eliminada exitosamente.' : 'Error al eliminar penalización.';
-    $_SESSION['tipo_mensaje'] = $stmt->affected_rows > 0 ? 'success' : 'error';
+    if ($stmt->affected_rows > 0) {
+        registrarBitacora(
+            $conn,
+            'Penalizaciones',
+            'Eliminar',
+            "Penalización eliminada (ID: $id_penalizacion)"
+        );
+        $_SESSION['mensaje'] = 'Penalización eliminada exitosamente.';
+        $_SESSION['tipo_mensaje'] = 'success';
+    } else {
+        $_SESSION['mensaje'] = 'Error al eliminar penalización.';
+        $_SESSION['tipo_mensaje'] = 'error';
+    }
 
     $stmt->close();
     desconectar($conn);

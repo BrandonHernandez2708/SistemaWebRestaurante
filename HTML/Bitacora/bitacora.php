@@ -15,7 +15,6 @@ if (!isset($_SESSION['id_usuario'])) {
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../css/bootstrap.min.css">
   <link rel="stylesheet" href="../../css/diseñoModulos.css">
-
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script defer src="../../javascript/bitacora.js"></script>
 </head>
@@ -25,7 +24,9 @@ if (!isset($_SESSION['id_usuario'])) {
   <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
     <h1 class="mb-0">🧾 Marea Roja | Bitácora de Actividades</h1>
     <ul class="nav nav-pills gap-2 mb-0">
-      <li class="nav-item"><a href="menu_empleados.php" class="nav-link">Regresar</a></li>
+      <a href="../menu_empleados_vista.php" class="btn-back">
+        <i class="bi bi-arrow-left"></i> Regresar al Menú
+      </a>
     </ul>
   </div>
 </header>
@@ -34,11 +35,13 @@ if (!isset($_SESSION['id_usuario'])) {
   <section class="card shadow p-4 mb-4">
     <h2 class="card__title mb-3">Historial de Acciones</h2>
 
-    <!-- filtros de busqueda -->
+    <!-- filtros -->
     <div class="row g-3 align-items-end mb-3">
       <div class="col-md-3">
         <label for="filtro-usuario" class="form-label">Usuario:</label>
-        <input type="text" class="form-control" id="filtro-usuario" placeholder="Nombre de usuario">
+        <select id="filtro-usuario" class="form-select">
+          <option value="">Cargando usuarios...</option>
+        </select>
       </div>
 
       <div class="col-md-3">
@@ -52,8 +55,12 @@ if (!isset($_SESSION['id_usuario'])) {
       </div>
 
       <div class="col-md-3 d-flex gap-2">
-        <button class="btn btn-primary flex-fill" id="btn-filtrar">Filtrar</button>
-        <button class="btn btn-secondary flex-fill" id="btn-limpiar">Limpiar</button>
+        <button class="btn btn-primary flex-fill" id="btn-filtrar">
+          <i class="bi bi-search"></i> Filtrar
+        </button>
+        <button class="btn btn-secondary flex-fill" id="btn-limpiar">
+          <i class="bi bi-eraser"></i> Limpiar
+        </button>
       </div>
     </div>
 
@@ -76,9 +83,8 @@ if (!isset($_SESSION['id_usuario'])) {
   </section>
 </main>
 
-
 <footer class="text-center py-3">
-  &copy; 2025 Marea Roja - Sistema de Reservaciones
+  &copy; 2025 Marea Roja - Sistema de Auditoria
 </footer>
 </body>
 </html>

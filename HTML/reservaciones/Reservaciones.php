@@ -34,10 +34,7 @@
             
             <ul class="nav nav-pills gap-3 mb-0">
                 <li class="nav-item">
-                    <a href="../menu_empleados.php" class="btn btn-dorado">Regresar</a>
-                </li>
-                <li class="nav-item">
-                    <a href="../Mesas/mesas.php" class="btn btn-dorado">📅 Mesas</a>
+                    <a href="../menu_empleados.php" class="btn-back"><i class="bi bi-arrow-left"></i>Regresar al Menú</a>
                 </li>
             </ul>
         </div>

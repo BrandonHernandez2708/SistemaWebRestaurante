@@ -26,7 +26,7 @@
     <h1 class="mb-0">👥 Marea Roja | Gestión de Clientes</h1>
         <ul class="nav nav-pills gap-3 mb-0">
       <li class="nav-item">
-        <a href="../menu_empleados.php" class="btn btn-dorado">Regresar</a>
+        <a href="../menu_empleados.php" class="btn-back"><i class="bi bi-arrow-left"></i>Regresar al Menú</a>
       </li>
   </ul>
   </div>
@@ -69,7 +69,7 @@
 
       <div class="col-12 d-flex gap-2 mt-3">
         <button type="submit" class="btn btn-success px-4">Guardar</button>
-        <button type="button" class="btn btn-danger btn-refrescar px-4">Actualizar</button>
+        <button type="button" class="btn btn-danger btn-refrescar px-4">Limpiar y Refrescar</button>
       </div>
     </form>
 

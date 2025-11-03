@@ -3,6 +3,7 @@ session_start();
 
 // ✅ Ruta robusta a conexion.php (sube 1 nivel desde /HTML/gestion_de_insumos → /HTML)
 require_once __DIR__ . '/../conexion.php';
+require_once __DIR__ . '/../funciones_globales.php';
 
 // --- Verificar sesión ---
 if (!isset($_SESSION['id_usuario'])) {
@@ -57,7 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
         $n = count($insumos);
         for ($i = 0; $i < $n; $i++) {
             $id_ins = (int)($insumos[$i] ?? 0);
-            $cant   = (float)str_replace(',', '.', $cantidades[$i] ?? 0);
+            // cantidad solo enteros
+            $cantRaw = $cantidades[$i] ?? 0;
+            $cant    = (int)preg_replace('/[^\d\-]/', '', (string)$cantRaw);
             $precio = (float)str_replace(',', '.', $precios[$i] ?? 0);
 
             if ($id_ins <= 0 || $cant <= 0 || $precio < 0) {
@@ -68,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
 
             $detalles[] = [
                 'id_insumo'       => $id_ins,
-                'cantidad'        => $cant,
+                'cantidad'        => $cant, // entero
                 'precio_unitario' => $precio,
                 'subtotal'        => $sub,
             ];
@@ -84,6 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
         $stmt->bind_param("isd", $id_proveedor, $fecha_compra, $monto_total);
         $stmt->execute();
         $id_compra = $conn->insert_id;
+        // Registrar en bitácora tras éxito del execute
+        registrarBitacora($conn, "compras_insumos", "insertar", "Compra de insumos (ID: $id_compra) creada");
+
         $stmt->close();
 
         // Insertar detalles (un solo prepare, sin recrearlo en el loop)
@@ -92,10 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
                 (id_compra_insumo, id_insumo, cantidad_compra, costo_unitario, costo_total)
             VALUES (?, ?, ?, ?, ?)
         ");
-        // tipos: i (id_compra) , i (id_insumo), d (cantidad), d (precio), d (subtotal)
+        // tipos: i (id_compra) , i (id_insumo), i (cantidad entera), d (precio), d (subtotal)
         foreach ($detalles as $d) {
             $stmtDet->bind_param(
-                "iiddd",
+                "iiidd",
                 $id_compra,
                 $d['id_insumo'],
                 $d['cantidad'],
@@ -109,7 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
         // Actualizar stock
         $stmtUpd = $conn->prepare("UPDATE inventario_insumos SET stock = stock + ? WHERE id_insumo = ?");
         foreach ($detalles as $d) {
-            $stmtUpd->bind_param("di", $d['cantidad'], $d['id_insumo']);
+            // cantidad entera suma a stock
+            $stmtUpd->bind_param("ii", $d['cantidad'], $d['id_insumo']);
             $stmtUpd->execute();
         }
         $stmtUpd->close();
@@ -162,7 +169,7 @@ $insumos = obtenerInsumos();
 <header class="mb-4">
     <div class="container d-flex justify-content-between align-items-center py-3">
         <h1 class="mb-0">COMPRA - INSUMOS</h1>
-        <a href="../menu_empleados.php" class="btn btn-outline-dark">Regresar</a>
+        <a href="../menu_empleados.php" class="btn-back"><span class="arrow">←</span> Regresar</a>
     </div>
 </header>
 
