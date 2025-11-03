@@ -5,14 +5,13 @@ require_once 'conexion.php';
 // Inicializar arrays
 $departamentos = [];
 $puestos = [];
-$sucursales = [];
 $error = '';
 
 // Verificar si las tablas necesarias existen y tienen datos
 try {
     $conexion = conectar();
     
-    // Obtener departamentos - CORREGIDO: nombre_departamento
+    // Obtener departamentos
     $sql_deptos = "SELECT id_departamento, nombre_departamento FROM departamentos ORDER BY nombre_departamento";
     $result_deptos = $conexion->query($sql_deptos);
     if ($result_deptos && $result_deptos->num_rows > 0) {
@@ -21,22 +20,13 @@ try {
         $error = "No hay departamentos registrados. Contacta al administrador.";
     }
     
-    // Obtener puestos - CORREGIDO: puesto (no descripcion)
+    // Obtener puestos
     $sql_puestos = "SELECT id_puesto, puesto FROM puesto ORDER BY puesto";
     $result_puestos = $conexion->query($sql_puestos);
     if ($result_puestos && $result_puestos->num_rows > 0) {
         $puestos = $result_puestos->fetch_all(MYSQLI_ASSOC);
     } else {
         $error = "No hay puestos registrados. Contacta al administrador.";
-    }
-    
-    // Obtener sucursales - CORREGIDO: direccion_sucursal
-    $sql_sucursales = "SELECT id_sucursal, direccion_sucursal FROM sucursales ORDER BY direccion_sucursal";
-    $result_sucursales = $conexion->query($sql_sucursales);
-    if ($result_sucursales && $result_sucursales->num_rows > 0) {
-        $sucursales = $result_sucursales->fetch_all(MYSQLI_ASSOC);
-    } else {
-        $error = "No hay sucursales registradas. Contacta al administrador.";
     }
     
     desconectar($conexion);
@@ -139,9 +129,9 @@ try {
                 </div>
             <?php endif; ?>
 
-            <?php if (empty($error) && !empty($departamentos) && !empty($puestos) && !empty($sucursales)): ?>
+            <?php if (empty($error) && !empty($departamentos) && !empty($puestos)): ?>
             <form action="procesar_registro.php" method="post">
-                <!-- Sección de Información Personal -->
+                <!-- Información Personal -->
                 <div class="form-section">
                     <h3 class="section-title">Información Personal</h3>
                     <div class="form-row">
@@ -162,7 +152,7 @@ try {
                     </div>
                 </div>
 
-                <!-- Sección de Información Laboral -->
+                <!-- Información Laboral -->
                 <div class="form-section">
                     <h3 class="section-title">Información Laboral</h3>
                     <div class="form-row">
@@ -189,26 +179,9 @@ try {
                             </select>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="id_sucursal">Sucursal *</label>
-                            <select id="id_sucursal" name="id_sucursal" required>
-                                <option value="">Selecciona una sucursal</option>
-                                <?php foreach ($sucursales as $sucursal): ?>
-                                    <option value="<?php echo htmlspecialchars($sucursal['id_sucursal']); ?>">
-                                        <?php echo htmlspecialchars($sucursal['direccion_sucursal']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="fecha_ingreso">Fecha de Ingreso *</label>
-                            <input type="date" id="fecha_ingreso" name="fecha_ingreso" required>
-                        </div>
-                    </div>
                 </div>
 
-                <!-- Sección de Credenciales -->
+                <!-- Credenciales -->
                 <div class="form-section">
                     <h3 class="section-title">Credenciales de Acceso</h3>
                     <div class="form-row">
@@ -244,7 +217,6 @@ try {
                     <ul>
                         <li>La tabla 'departamentos' tenga datos</li>
                         <li>La tabla 'puesto' tenga datos</li>
-                        <li>La tabla 'sucursales' tenga datos</li>
                     </ul>
                 </div>
             <?php endif; ?>
@@ -269,9 +241,6 @@ try {
                 return false;
             }
         });
-
-        // Establecer fecha máxima como hoy
-        document.getElementById('fecha_ingreso')?.max = new Date().toISOString().split('T')[0];
     </script>
 </body>
 </html>

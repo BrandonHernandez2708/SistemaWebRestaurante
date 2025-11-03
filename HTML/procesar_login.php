@@ -25,7 +25,7 @@ function validarLogin($usuario, $contrasenia, $conn) {
 
     $usuario_data = $resultado->fetch_assoc();
 
-    //el campo activo siempre debe de ser 1
+    // El campo activo siempre debe ser 1
     if (empty($usuario_data['activo']) || $usuario_data['activo'] != 1) {
         $stmt->close();
         return false;
@@ -34,11 +34,11 @@ function validarLogin($usuario, $contrasenia, $conn) {
     $hash = $usuario_data['contrasenia_hash'];
     $password_ok = false;
 
-    //verificar hash seguro
+    // Verificar hash seguro
     if (!empty($hash) && password_verify($contrasenia, $hash)) {
         $password_ok = true;
     } else {
-        //fallback para contraseñas antiguas
+        // Fallback para contraseñas antiguas
         if (!empty($hash) && (
             hash_equals($hash, $contrasenia) ||
             hash_equals($hash, md5($contrasenia)) ||
@@ -48,7 +48,7 @@ function validarLogin($usuario, $contrasenia, $conn) {
             $password_ok = true;
         }
 
-        //si fue un formato viejo, actualizar el hash
+        // Si fue un formato viejo, actualizar el hash
         if ($password_ok) {
             $newHash = password_hash($contrasenia, PASSWORD_DEFAULT);
             $updSql = "UPDATE usuarios SET contrasenia_hash = ? WHERE id_usuario = ?";
@@ -65,29 +65,28 @@ function validarLogin($usuario, $contrasenia, $conn) {
         return false;
     }
 
-    //verificar empleado activo
+    // Obtener nombre completo del empleado
     $id_empleado = $usuario_data['id_empleado'];
     $nombre_completo = '';
     if (!empty($id_empleado)) {
-        $sql2 = "SELECT nombre, apellido, estado FROM empleados WHERE id_empleado = ? LIMIT 1";
+        // ✅ Campos corregidos según tu tabla empleados
+        $sql2 = "SELECT nombre_empleado, apellido_empleado 
+                 FROM empleados 
+                 WHERE id_empleado = ? 
+                 LIMIT 1";
         if ($stmt2 = $conn->prepare($sql2)) {
             $stmt2->bind_param("i", $id_empleado);
             $stmt2->execute();
             $res2 = $stmt2->get_result();
             if ($res2 && $res2->num_rows === 1) {
                 $emp = $res2->fetch_assoc();
-                if ($emp['estado'] !== 'ACTIVO') {
-                    $stmt2->close();
-                    $stmt->close();
-                    return false;
-                }
-                $nombre_completo = trim($emp['nombre'] . ' ' . $emp['apellido']);
+                $nombre_completo = trim($emp['nombre_empleado'] . ' ' . $emp['apellido_empleado']);
             }
             $stmt2->close();
         }
     }
 
-    //guardar id usuario, empleado y nombre usuario
+    // Guardar id usuario, empleado y nombre usuario
     session_regenerate_id(true);
     $_SESSION['id_usuario'] = $usuario_data['id_usuario'];
     $_SESSION['id_empleado'] = $id_empleado;
@@ -101,7 +100,7 @@ function validarLogin($usuario, $contrasenia, $conn) {
 }
 
 
-//procesar formulario
+// Procesar formulario
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $usuario = trim($_POST['usuario']);
     $contrasenia = $_POST['clave'];
