@@ -147,6 +147,6 @@ desconectar($conn);
 <!-- ExcelJS y FileSaver para generar XLSX con imagen -->
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-<script src="/SistemaWebRestaurante/javascript/Planilla.js"></script>
+<script src="./Planilla.js"></script>
 </body>
 </html>

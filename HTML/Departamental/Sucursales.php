@@ -357,6 +357,6 @@ desconectar($conn);
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="/SistemaWebRestaurante/Departamental/Sucursales.js"></script>
+<script src="./Sucursales.js"></script>
 </body>
 </html>

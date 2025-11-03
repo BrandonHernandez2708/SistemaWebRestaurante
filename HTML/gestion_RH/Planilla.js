@@ -30,10 +30,10 @@ document.addEventListener('DOMContentLoaded', function () {
       if (typeof Swal !== 'undefined') {
         Swal.fire({
           title: 'Generar planilla',
-          text: `Se generará la planilla para ${mes}/${anio} y se guardará en el histórico. ¿Continuar?`,
+          text: `Se generará la planilla para ${mes}/${anio} y se guardará en el historial. ¿Continuar?`,
           icon: 'question',
           showCancelButton: true,
-          confirmButtonText: 'Sí, generar',
+          confirmButtonText: 'Si',
           cancelButtonText: 'Cancelar'
         }).then(r => { if (r.isConfirmed) doSubmit(); });
       } else {
@@ -42,7 +42,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Mejorar UX: prevenir doble envío del botón
   if (btnGenerar) {
     btnGenerar.addEventListener('click', function () {
       // El submit ya muestra confirmación; aquí solo podemos deshabilitar el botón mientras se procesa
@@ -50,8 +49,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Sincronizar selects visibles (mes/anio) con los hidden inputs del formulario de guardado
-  // y comportamiento del botón 'Nuevo' (resetear valores)
   const mesSelect = document.getElementById('mes_select');
   const anioInput = document.getElementById('anio_input');
   const hiddenMes = document.getElementById('hidden_mes');
@@ -71,14 +68,13 @@ document.addEventListener('DOMContentLoaded', function () {
   if (anioInput) anioInput.addEventListener('input', syncHidden);
   if (formGuardar) {
     formGuardar.addEventListener('submit', function(e){
-      syncHidden(); // asegurar valores actualizados antes de enviar
+      syncHidden(); 
     });
   }
 
   // inicializar
   syncHidden();
 
-  // Botón Nuevo: resetear campos a valores por defecto (mes actual, año actual, fecha generación hoy)
   if (btnNuevo) {
     btnNuevo.addEventListener('click', function(){
       try {
@@ -98,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // ==== Exportaciones en Detalle de Planilla PDF/EXCEl
+  // Exportaciones en Detalle de Planilla PDF/EXCEl
   const btnPdf = document.getElementById('btn-pdf');
   if (btnPdf) {
     btnPdf.addEventListener('click', function () {
@@ -109,24 +105,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const doc = new jsPDF('l', 'pt', 'a4');
 
-        // Tomar textos desde el DOM
-        const titleEl = document.querySelector('#export-area h2');
-        const infoEl = document.querySelector('#export-area p');
-        const titulo = titleEl ? titleEl.textContent.trim() : 'Detalle de Planilla';
-        const info = infoEl ? infoEl.textContent.trim() : '';
+  
+  const titleEl = document.querySelector('#export-area h2');
+  const infoEl = document.querySelector('#export-area p');
+  // Normalizar espacios internos para evitar saltos de línea heredados del HTML
+  const titulo = titleEl ? titleEl.textContent.replace(/\s+/g,' ').trim() : 'Detalle de Planilla';
+  const info = infoEl ? infoEl.textContent.replace(/\s+/g,' ').trim() : '';
 
-        doc.setFontSize(16);
-        doc.text(titulo, 40, 40);
-        doc.setFontSize(11);
-        if (info) doc.text(info, 40, 60);
+ 
+        const marginLeft = 40;
+        const marginTop = 40;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const maxWidth = pageWidth - marginLeft * 2;
+
+
+    doc.setFontSize(16);
+    const titleLines = doc.splitTextToSize(titulo, maxWidth);
+    doc.text(titleLines, marginLeft, marginTop);
+    // Calcular altura aproximada del bloque de título según el tamaño de fuente y número de líneas
+    const titleLineHeight = doc.getFontSize() * 1.2;
+    let currentY = marginTop + (Array.isArray(titleLines) ? titleLines.length : 1) * titleLineHeight;
+
+
+        if (info) {
+          currentY += 8;
+          doc.setFontSize(11);
+          const infoLines = doc.splitTextToSize(info, maxWidth);
+          const infoTop = currentY;
+          doc.text(infoLines, marginLeft, infoTop);
+          const infoLineHeight = doc.getFontSize() * 1.25;
+          currentY = infoTop + (Array.isArray(infoLines) ? infoLines.length : 1) * infoLineHeight;
+        }
 
         if (typeof doc.autoTable !== 'function') {
           alert('No está disponible autoTable para jsPDF');
           return;
         }
-        doc.autoTable({ html: '#tabla-detalle table', startY: 100, styles: { fontSize: 9 } });
 
-        // Construir nombre de archivo a partir del título si es posible
+  const startY = Math.max(currentY + 16, 100);
+        doc.autoTable({ html: '#tabla-detalle table', startY, styles: { fontSize: 9 } });
+
+        // Nombre del archivo
         let nombre = 'Planilla.pdf';
         const m = titulo.match(/([A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)\s+(\d{4})/);
         if (m) nombre = `Planilla_${m[2]}_${m[1]}.pdf`;
@@ -171,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const buffer = await wb.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-        // Nombre a partir del título si se puede
+        // Nombre excel
         const titleEl = document.querySelector('#export-area h2');
         const titulo = titleEl ? titleEl.textContent.trim() : '';
         let nombre = 'Planilla.xlsx';

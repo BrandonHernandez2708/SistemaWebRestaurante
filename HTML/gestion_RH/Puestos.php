@@ -319,6 +319,6 @@ $puestos = obtenerPuestos();
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="/SistemaWebRestaurante/gestion_RH/Puestos.js"></script>
+<script src="./Puestos.js"></script>
 </body>
 </html>

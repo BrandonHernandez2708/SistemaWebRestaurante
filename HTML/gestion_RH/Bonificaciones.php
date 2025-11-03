@@ -311,6 +311,6 @@ window.__mensaje = {
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="/SistemaWebRestaurante/gestion_RH/Bonificaciones.js"></script>
+<script src="./Bonificaciones.js"></script>
 </body>
 </html>

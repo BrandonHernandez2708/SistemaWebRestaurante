@@ -31,7 +31,8 @@ function fecha_esp($f) {
 // 1) Cargar histórico de planillas
 $conn = conectar();
 $hist = $conn->query("SELECT id_planilla, mes, anio, fecha_generacion, total_empleados, total_general
-                      FROM planilla ORDER BY anio ASC, mes ASC");
+                      FROM planilla
+                      ORDER BY anio ASC, mes ASC, fecha_generacion ASC");
 $planillas = [];
 while ($h = $hist->fetch_assoc()) $planillas[] = $h;
 desconectar($conn);
@@ -151,16 +152,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
     }
 }
 
-$mes = intval($_GET['mes'] ?? date('n'));
-$anio = intval($_GET['anio'] ?? date('Y'));
-$fecha_filtro = trim($_GET['fecha'] ?? ''); // YYYY-MM-DD opcional
+$mes = intval($_GET['mes'] ?? 0);
+$anio = intval($_GET['anio'] ?? 0);
+$fecha_filtro = trim($_GET['fecha'] ?? ''); 
 $filtro_activo = false;
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Planillas (con filtros)</title>
+<title>Planillas</title>
 <link rel="stylesheet" href="/SistemaWebRestaurante/css/bootstrap.min.css">
 <link rel="stylesheet" href="/SistemaWebRestaurante/css/diseñoModulos.css">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
@@ -168,7 +169,7 @@ $filtro_activo = false;
 <body>
 <header class="mb-4">
   <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between py-3">
-    <h1 class="mb-0">Gestión de Planillas</h1>
+    <h1 class="mb-0">Recursos Humanos RH</h1>
     <ul class="nav nav-pills gap-2 mb-0">
       <li class="nav-item">
         <a href="../menu_empleados.php" class="btn-back" aria-label="Regresar al menú principal">
@@ -192,43 +193,43 @@ $filtro_activo = false;
 <?php unset($_SESSION['mensaje'], $_SESSION['tipo_mensaje']); endif; ?>
 
 <section class="card shadow p-4 mb-4">
-  <h2 class="card__title text-primary mb-4">Generar / Visualizar planilla</h2>
+  <h2 class="card__title text-primary mb-4">Generar/Visualizar planilla</h2>
   <form class="row g-3" id="form-buscar" method="get" action="Planilla_Detalle.php">
 
 
     <div class="col-md-2" id="col-mes">
-      <label class="form-label">Mes</label>
+      <label class="form-label">Mes:</label>
       <select class="form-select" name="mes" id="mes_select">
+        <option value="" <?= $mes===0?'selected':'' ?>>-- Seleccione mes --</option>
         <?php for($m=1;$m<=12;$m++): ?>
           <option value="<?= $m ?>" <?= $m==$mes?'selected':'' ?>><?= mes_nombre($m) ?></option>
         <?php endfor; ?>
       </select>
     </div>
     <div class="col-md-2" id="col-anio">
-      <label class="form-label">Año</label>
-      <input type="number" class="form-control" name="anio" id="anio_input" min="2000" max="<?= date('Y')+1 ?>" value="<?= htmlspecialchars($anio) ?>">
+      <label class="form-label">Año:</label>
+      <input type="number" class="form-control" name="anio" id="anio_input" min="2000" max="<?= date('Y')+1 ?>" value="<?= $anio?htmlspecialchars($anio):'' ?>" placeholder="Ej: <?= date('Y') ?>">
     </div>
     <div class="col-md-3" id="col-fecha" style="display:none;">
-      <label class="form-label">Fecha</label>
+      <label class="form-label">Fecha:</label>
       <input type="date" class="form-control" name="fecha" value="<?= htmlspecialchars($fecha_filtro) ?>">
     </div>
 
   </form>
-  <form class="mt-3" id="form-guardar" method="post">
+  <form class="mt-3" id="form-guardar" method="post" novalidate>
     <input type="hidden" name="accion" value="guardar">
-    <input type="hidden" name="mes" id="hidden_mes" value="<?= htmlspecialchars($mes) ?>">
-    <input type="hidden" name="anio" id="hidden_anio" value="<?= htmlspecialchars($anio) ?>">
+    <input type="hidden" name="mes" id="hidden_mes" value="<?= $mes?htmlspecialchars($mes):'' ?>">
+    <input type="hidden" name="anio" id="hidden_anio" value="<?= $anio?htmlspecialchars($anio):'' ?>">
     <div class="row g-3">
       <div class="col-md-4">
-        <label class="form-label">Fecha de generación (la introducirás tú)</label>
-        <input type="date" class="form-control" name="fecha_generacion_manual" id="fecha_generacion_manual" value="<?= date('Y-m-d') ?>" required>
-        <small class="form-text text-muted help-text">Introduce la fecha exacta en que se generó la planilla (ej: 2025-01-31).</small>
+        <label class="form-label">Fecha a generar:</label>
+        <input type="date" class="form-control" name="fecha_generacion_manual" id="fecha_generacion_manual" value="" required>
       </div>
 
       <div class="col-12 mt-3">
         <div class="d-flex gap-2">
           <button id="btn-nuevo" type="button" class="btn btn-secondary">Nuevo</button>
-          <button id="btn-guardar" type="submit" class="btn btn-success" data-con-filtro="<?= $filtro_activo ? '1':'0' ?>">Guardar planilla (histórico)</button>
+          <button id="btn-guardar" type="submit" class="btn btn-success" data-con-filtro="<?= $filtro_activo ? '1':'0' ?>">Guardar</button>
         </div>
       </div>
     </div>
@@ -237,7 +238,7 @@ $filtro_activo = false;
 
 
 <section class="card shadow p-4">
-  <h2 class="text-primary mb-3">Histórico de planillas guardadas</h2>
+  <h2 class="text-primary mb-3">Historial de planillas guardadas</h2>
   <div class="table-responsive">
     <table class="table table-bordered table-striped">
       <thead class="table-dark">
@@ -275,7 +276,7 @@ $filtro_activo = false;
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="/SistemaWebRestaurante/gestion_RH/Planilla.js"></script>
+<script src="./Planilla.js"></script>
 <script>
   (function(){
     const m = window.__mensaje;
@@ -284,6 +285,38 @@ $filtro_activo = false;
       icon: m.tipo==='success'?'success':(m.tipo==='warning'?'warning':'error'),
       title: m.tipo==='success'?'Éxito':(m.tipo==='warning'?'Atención':'Error'),
       text: m.text
+    });
+  })();
+  // Sincronizar y validar campos requeridos para guardar
+  (function(){
+    const mesSel = document.getElementById('mes_select');
+    const anioInput = document.getElementById('anio_input');
+    const fechaGen = document.getElementById('fecha_generacion_manual');
+    const hMes = document.getElementById('hidden_mes');
+    const hAnio = document.getElementById('hidden_anio');
+    const formGuardar = document.getElementById('form-guardar');
+
+    function syncHidden(){
+      hMes.value = mesSel.value || '';
+      hAnio.value = anioInput.value || '';
+    }
+    mesSel.addEventListener('change', syncHidden);
+    anioInput.addEventListener('input', syncHidden);
+    syncHidden();
+
+    formGuardar.addEventListener('submit', function(e){
+      const errores = [];
+      if (!mesSel.value) errores.push('Selecciona el Mes.');
+      if (!anioInput.value) errores.push('Ingresa el Año.');
+      if (!fechaGen.value) errores.push('Ingresa la Fecha de generación.');
+      if (errores.length){
+        e.preventDefault();
+        Swal.fire({
+          icon: 'warning',
+          title: 'Campos requeridos',
+          html: errores.join('<br>')
+        });
+      }
     });
   })();
   </script>
