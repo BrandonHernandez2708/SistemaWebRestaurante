@@ -66,31 +66,26 @@
             </li>
 
             <li>
-                <a href="#" class="submenu-toggle"><span>🪑</span> Gestión de Mobiliario</a>
+                <a href="#" class="submenu-toggle"><span>🪑</span> Mobiliario</a>
                 <ul class="submenu">
-                    <li><a href="#" class="consulta-only" data-href="../HTML/gestion_de_mobiliario/gestion_mobiliario.php">Control del Mobiliario</a></li>
-                    <li><a href="#" class="consulta-only" data-href="../HTML/gestion_de_mobiliario/compras_mobiliario.php">Gestion de Compras</a></li>
-                    <li><a href="#" class="consulta-only" data-href="../HTML/gestion_de_mobiliario/detalle_compras_mobiliario.php">detalle de Compras</a></li>
+                    <li><a href="Reportes_gestion_mobiliario/reporte_compras_mobiliario.php">Sonsula de mobiliario</a></li>
                 </ul>
             </li>
 
             <li>
-                <a href="#" class="submenu-toggle"><span>🛠️</span> mantenimiento de Mobiliario</a>
+                <a href="#" class="submenu-toggle"><span>🛠️</span> Mantenimiento de Mobiliario</a>
                 <ul class="submenu">
-                    <li><a href="#" class="consulta-only" data-href="../HTML/mantenimiento_de_Mobiliario/mantenimiento_muebles.php">mantenimiento de muebles</a></li>
-                    <li><a href="#" class="consulta-only" data-href="../HTML/mantenimiento_de_Mobiliario/mantenimiento_electrodomesticos.php">mantenimiento de electrónica</a></li>
-                    
+                    <li><a href="Reporte_mantenimiento/reporte_mantenimiento_muebles.php">Mantenimiento de muebles</a></li>
+                    <li><a href="Reporte_mantenimiento/reporte_mantenimiento_electrodomesticos.php">Mantenimiento de electrodomésticos</a></li>
                 </ul>
             </li>
 
-            <li>
+             <li>
                 <a href="#" class="submenu-toggle"><span>🚗</span> Gestión de Vehiculos</a>
                 <ul class="submenu">
-                    <li><a href="#" class="consulta-only" data-href="../HTML/gestion_de_vehiculos/gestion_vehiculos.php">Gestion de Vehiculos</a></li>
-                    <li><a href="#" class="consulta-only" data-href="../HTML/gestion_de_vehiculos/mantenimiento_vehiculos.php">mantenimiento</a></li>
-                    <li><a href="#" class="consulta-only" data-href="../HTML/gestion_de_vehiculos/viajes_vehiculos.php">Viajes</a></li>
-                    <li><a href="#" class="consulta-only" data-href="../HTML/gestion_de_vehiculos/rutas_vehiculos.php">Rutas</a></li>
-                    <li><a href="#" class="consulta-only" data-href="../HTML/gestion_de_vehiculos/reportes_accidentes.php">Accidentes</a></li>
+                    <li><a href="Reporte_gestion_vehiculo/reporte_mantenimiento_vehiculos.php">Mantenimiento de vehiculos</a></li>
+                    <li><a href="Reporte_gestion_vehiculo/reporte_accidentes.php">Reporte de accidentes</a></li>
+                    <li><a href="Reporte_gestion_vehiculo/reporte_viajes_vehiculos.php">Reporte de viajes</a></li>
                 </ul>
             </li>
 
